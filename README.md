@@ -71,7 +71,7 @@ app/
 ## Getting Started
 
 ```bash
-git clone git@github.com:YOUR_USERNAME/real-estate-api.git
+git clone git@github.com:Esaius2058/real-estate-api.git
 cd real-estate-api
 
 composer install
@@ -117,4 +117,4 @@ DARAJA_CONSUMER_SECRET=
 
 ## License
 
-Private & Proprietary — [Your Agency Name]
+Private & Proprietary Saturn Group
