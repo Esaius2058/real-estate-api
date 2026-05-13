@@ -1,58 +1,120 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Real Estate OS — Backend API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A multi-tenant SaaS platform for real estate agencies built with Laravel. Handles property listings, CRM pipelines, secure document vaulting (KYC/Title Deeds), and escrow tracking.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Runtime:** PHP 8.3
+- **Framework:** Laravel 12
+- **Database:** MySQL
+- **Auth:** Laravel Sanctum (token-based, CSRF-protected)
+- **Storage:** Supabase S3 (private bucket for KYC and title deeds)
+- **Queue:** Laravel Jobs (notifications, matching algorithm)
+- **Scheduler:** Laravel Cron (auto-expire listings)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+## Architecture
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Multi-tenancy is handled via **Logical Tenant Separation** — every model scoped to `agency_id` through a Laravel Global Scope. No agency can query another's data at the database level.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+app/
+├── Console/Commands/          # ExpireListings cron job
+├── Events & Listeners/        # Domain events (match found, doc verified)
+├── Http/
+│   ├── Controllers/Api/V1/    # Versioned API controllers
+│   ├── Middleware/             # Tenant resolution, MFA gate
+│   ├── Requests/              # Form request validation
+│   └── Resources/             # API response transformers
+├── Models/                    # Agency, User, Property, Lead, SecureDocument, Transaction, ActivityLog
+├── Notifications/             # Email/SMS alerts
+├── Policies/                  # RBAC — admin vs agent permissions
+├── Scopes/                    # AgencyScope (global tenant filter)
+├── Services/
+│   ├── Escrow/                # Fund tracking + webhook signature verification
+│   ├── Matching/              # Property ↔ buyer matching algorithm
+│   ├── Signature/             # Daraja/Stripe webhook verification
+│   └── Vault/                 # Presigned S3 URLs, MIME validation
+└── Traits/                    # BelongsToAgency (applied to all tenant models)
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+---
 
-## Contributing
+## Core Modules
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+| Module | Description |
+|---|---|
+| **Agency Workspace** | Onboarding, subscription tiers, RBAC (admin/agent roles) |
+| **Property Engine** | CRUD listings, image galleries, contract lifecycle, auto-expiry |
+| **CRM Pipeline** | Kanban lead tracking, activity timeline, automated alerts |
+| **Secure Vault** | KYC uploads, title deed verification workflow, e-signature |
+| **Escrow Ledger** | Fund tracking, payment gateway webhook verification |
+| **Audit Trail** | Immutable `activity_logs` table — every sensitive action recorded |
 
-## Code of Conduct
+---
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Security Highlights
 
-## Security Vulnerabilities
+- Global Scopes enforce tenant isolation at the query level
+- MFA required for admins accessing Vault and Escrow modules
+- KYC and title deeds stored in a **private S3 bucket** — never in `/public`
+- Document access via **presigned URLs** (15-minute expiry)
+- Strict MIME-type validation on all uploads
+- Webhook signature verification for Stripe and Daraja (M-Pesa)
+- Login throttling via Laravel rate limiting
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
+
+## Getting Started
+
+```bash
+git clone git@github.com:YOUR_USERNAME/real-estate-api.git
+cd real-estate-api
+
+composer install
+cp .env.example .env
+php artisan key:generate
+
+# Configure your .env (DB, S3, Sanctum, mail, SMS)
+
+php artisan migrate --seed
+php artisan serve
+```
+
+---
+
+## Environment Variables
+
+Key `.env` values to configure before running:
+
+```
+DB_DATABASE=
+DB_USERNAME=
+DB_PASSWORD=
+
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=
+AWS_PRIVATE_BUCKET=
+
+SANCTUM_STATEFUL_DOMAINS=
+MFA_DRIVER=sms|authenticator
+
+DARAJA_CONSUMER_KEY=
+DARAJA_CONSUMER_SECRET=
+```
+
+---
+
+## Related Repositories
+
+- **Frontend (React):** `real-estate-web` 
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Private & Proprietary — [Your Agency Name]
