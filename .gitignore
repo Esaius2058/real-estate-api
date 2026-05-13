@@ -1,0 +1,24 @@
+cat >> .gitignore << 'EOF'
+
+# Environment
+.env
+.env.backup
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS / Storage keys
+*.pem
+*.key
+storage/app/private/
+
+# Logs
+storage/logs/*.log
+EOF
