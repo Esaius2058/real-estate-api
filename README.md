@@ -1,4 +1,4 @@
-# Real Estate OS — Backend API
+# Real Estate App — Backend API
 
 A multi-tenant SaaS platform for real estate agencies built with Laravel. Handles property listings, CRM pipelines, secure document vaulting (KYC/Title Deeds), and escrow tracking.
 
