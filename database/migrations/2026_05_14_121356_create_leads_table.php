@@ -12,25 +12,18 @@ return new class extends Migration
 
             $table->id();
 
-            /*
-            MULTITENANCY
-            */
+           
 
             $table->foreignId('agency_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            ASSIGNED AGENT
-            */
+           
 
             $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            LEAD DETAILS
-            */
 
             $table->string('name');
 
@@ -47,9 +40,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            /*
-            INDEXES
-            */
+           
 
             $table->index('agency_id');
 

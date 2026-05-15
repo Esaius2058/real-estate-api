@@ -12,17 +12,12 @@ return new class extends Migration
 
             $table->id();
 
-            /*
-            MULTITENANCY
-            */
+            
 
             $table->foreignId('agency_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            RELATIONSHIPS
-            */
 
             $table->foreignId('property_id')
                 ->constrained()
@@ -32,9 +27,7 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            PAYMENT DETAILS
-            */
+          
 
             $table->decimal('amount', 15, 2);
 
@@ -48,10 +41,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            /*
-            INDEXES
-            */
-
+            
             $table->index('agency_id');
 
             $table->index('status');

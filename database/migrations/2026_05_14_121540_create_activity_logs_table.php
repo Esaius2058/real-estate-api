@@ -12,25 +12,18 @@ return new class extends Migration
 
             $table->id();
 
-            /*
-            MULTITENANCY
-            */
+            
 
             $table->foreignId('agency_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            USER RESPONSIBLE
-            */
+            
 
             $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            AUDIT DATA
-            */
 
             $table->string('action');
 
@@ -38,9 +31,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            /*
-            INDEXES
-            */
+            
 
             $table->index('agency_id');
 

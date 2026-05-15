@@ -10,18 +10,14 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
 
-            /*
-            MULTITENANCY
-            */
+           
 
             $table->foreignId('agency_id')
                 ->after('id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            ROLE BASED ACCESS CONTROL
-            */
+           
 
             $table->enum('role', [
                 'admin',

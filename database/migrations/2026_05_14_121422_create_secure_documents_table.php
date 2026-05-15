@@ -12,23 +12,17 @@ return new class extends Migration
 
             $table->id();
 
-            /*
-            MULTITENANCY
-            */
+           
 
             $table->foreignId('agency_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
-            /*
-            POLYMORPHIC RELATION
-            */
+            
 
             $table->morphs('documentable');
 
-            /*
-            DOCUMENT DETAILS
-            */
+            
 
             $table->enum('document_type', [
                 'title_deed',
