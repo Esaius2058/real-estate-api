@@ -14,6 +14,9 @@ cat >> .gitignore << 'EOF'
 .DS_Store
 Thumbs.db
 
+# Submission Zips
+*.zip
+
 # AWS / Storage keys
 *.pem
 *.key
