@@ -21,3 +21,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('leads', LeadController::class);
     Route::patch('leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
 });
+
+Route::post('/payments/initiate', [PaymentController::class, 'initiate']);
+Route::post('/payments/callback', [PaymentController::class, 'callback']);
