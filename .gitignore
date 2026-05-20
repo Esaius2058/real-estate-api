@@ -5,10 +5,8 @@ cat >> .gitignore << 'EOF'
 .env.backup
 .env.production
 
-# IDE
-.idea/
-.vscode/
-*.swp
+.postman/
+postman/
 
 # OS
 .DS_Store
