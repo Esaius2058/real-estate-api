@@ -1,20 +1,22 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\V1\AuthenticationController;
-use App\Http\Controllers\Api\V1\PropertyController;
-use App\Http\Controllers\Api\V1\LeadController;
-use App\Http\Controllers\Api\V1\LeadKanbanController;
-use App\Http\Controllers\Api\V1\EscrowWebhookController;
-use App\Http\Controllers\Api\V1\PaymentController;
+use App\Http\Controllers\Api\v1\AuthenticationController;
+use App\Http\Controllers\Api\v1\PropertyController;
+use App\Http\Controllers\Api\v1\LeadController;
+use App\Http\Controllers\Api\v1\LeadKanbanController;
+use App\Http\Controllers\Api\v1\EscrowWebhookController;
+use App\Http\Controllers\Api\v1\PaymentController;
 
 Route::post('/register', [AuthenticationController::class, 'register']);
 Route::post('/login', [AuthenticationController::class, 'login']);
+
 Route::post('/webhooks/escrow', [EscrowWebhookController::class, 'handle']);
 
 // protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticationController::class, 'logout']);
+    Route::get('/me', [AuthenticationController::class, 'me']);
 
     // properties
     Route::apiResource('properties', PropertyController::class);
