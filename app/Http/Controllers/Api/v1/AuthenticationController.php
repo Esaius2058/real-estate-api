@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request; // Added for registration fallback validation
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -17,34 +17,34 @@ class AuthenticationController extends Controller
      */
     public function register(Request $request): JsonResponse
     {
-        // 1. Validate the incoming data profile
         $validated = $request->validate([
             'name'      => ['required', 'string', 'max:255'],
             'email'     => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password'  => ['required', 'string', 'min:8'], // Add 'confirmed' here if your form passes password_confirmation
+            'password'  => ['required', 'string', 'min:8'],
             'role'      => ['nullable', 'string'],
-            'agency_id' => ['nullable', 'string'], 
+            'agency_id' => ['nullable', 'numeric'], 
         ]);
 
-        // 2. Persist the compliance user record
         $user = User::create([
             'name'      => $validated['name'],
             'email'     => $validated['email'],
             'password'  => Hash::make($validated['password']),
-            'role'      => $validated['role'] ?? 'agent', // Fallback default assignment
+            'role'      => $validated['role'] ?? 'agent',
             'agency_id' => $validated['agency_id'] ?? null,
         ]);
 
-        // 3. Output structural state block matching login contract signatures
         return response()->json([
+            'message' => 'User registered successfully',
             'token' => $user->createToken('api-token')->plainTextToken,
             'user'  => [
                 'id'        => $user->id,
                 'name'      => $user->name,
                 'role'      => $user->role,
                 'agency_id' => $user->agency_id,
-            ]
-        ], 201); // Returns 201 Created status block
+            ],
+            // Kept as null for registration based on your frontend's workspace initialization flow
+            'profile' => null 
+        ], 201); 
     }
 
     /**
@@ -61,12 +61,41 @@ class AuthenticationController extends Controller
         }
 
         return response()->json([
+            'message' => 'Login successful',
             'token' => $user->createToken('api-token')->plainTextToken,
             'user'  => [
                 'id'        => $user->id,
                 'name'      => $user->name,
                 'role'      => $user->role,
                 'agency_id' => $user->agency_id,
+            ],
+            'profile' => [
+                'id'       => $user->id,
+                'email'    => $user->email,
+                'role'     => ucfirst($user->role), // Transforms 'agent' to 'Agent'
+                'agencyId' => $user->agency_id,
+                'name'     => $user->name,
+            ]
+        ]);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'user'  => [
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'role'      => $user->role,
+                'agency_id' => $user->agency_id,
+            ],
+            'profile' => [
+                'id'       => $user->id,
+                'email'    => $user->email,
+                'role'     => ucfirst($user->role),
+                'agencyId' => $user->agency_id,
+                'name'     => $user->name,
             ]
         ]);
     }

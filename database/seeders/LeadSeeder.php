@@ -14,7 +14,7 @@ class LeadSeeder extends Seeder
     {
         DB::table('leads')->insert([
             [
-                'name' => 'John Doe',
+                'name' => 'John Smith',
                 'user_id' => 3,
                 'kanban_stage' => 'negotiating',
                 'desired_location' => 'Nairobi',
@@ -24,8 +24,8 @@ class LeadSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Jane Smith',
-                'user_id' => 4,
+                'name' => 'Jane Doe',
+                'user_id' => 2,
                 'kanban_stage' => 'viewing',
                 'desired_location' => 'Nairobi',
                 'max_budget' => 100000,
