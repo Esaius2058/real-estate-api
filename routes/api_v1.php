@@ -8,23 +8,27 @@ use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\EscrowWebhookController;
 use App\Http\Controllers\Api\v1\PaymentController;
 
+// Public Routes
 Route::post('/register', [AuthenticationController::class, 'register']);
 Route::post('/login', [AuthenticationController::class, 'login']);
 
+// External Webhooks (No Auth)
 Route::post('/webhooks/escrow', [EscrowWebhookController::class, 'handle']);
+Route::post('/payments/callback', [PaymentController::class, 'callback']);
 
-// protected routes
+// Protected Routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
 
-    // properties
+    // Properties
     Route::apiResource('properties', PropertyController::class);
 
-    // leads
+    // Leads
     Route::apiResource('leads', LeadController::class);
     Route::patch('leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
+    
+    // Payments (with dedicated rate limiting)
+    Route::post('/payments/initiate', [PaymentController::class, 'initiate'])
+        ->middleware('throttle:payments');
 });
-
-Route::post('/payments/initiate', [PaymentController::class, 'initiate']);
-Route::post('/payments/callback', [PaymentController::class, 'callback']);
