@@ -30,26 +30,32 @@ class PaymentController extends Controller
             'phone_number' => 'required|string', // Should ideally be formatted to 2547XXXXXXXX
         ]);
 
+        $user = auth()->user();
         $property = Property::findOrFail($request->property_id);
 
-        // 1. Business Logic: Prevent double booking
-        if ($property->status !== 'Available') {
-            return response()->json(['message' => 'Property is no longer available.'], 422);
+        // ACCESS CONTROL: Enforce strict multi-tenant boundary via agency_id
+        if ($property->agency_id !== $user->agency_id) {
+            return response()->json(['message' => 'Unauthorized property context.'], 403);
         }
 
-        // 2. Create the Pending Ledger Entry
+        // Business Logic: Prevent double booking
+        if ($property->status !== 'active') {
+            return response()->json(['message' => 'Property is not currently available.'], 422);
+        }
+
+        // Create the Pending Ledger Entry
         // Assuming your properties have a 'price' or 'booking_fee' column. 
         $amount = $property->price; 
 
         $payment = Payment::create([
-            'tenant_id' => auth()->user()->tenant_id ?? 1, // Adjust based on your auth structure
-            'user_id' => auth()->id(),
+            'agency_id' => $user->agency_id ?? 1, // Adjust based on your auth structure
+            'user_id' => $user->id(),
             'property_id' => $property->id,
             'amount' => $amount,
             'status' => 'pending',
         ]);
 
-        // 3. Trigger Safaricom STK Push
+        // Trigger Safaricom STK Push
         try {
             // Convert to integer (Safaricom rejects decimals) and format reference
             $response = $this->darajaService->stkPush(
@@ -58,7 +64,7 @@ class PaymentController extends Controller
                 "PROP-{$property->id}"
             );
 
-            // 4. Update ledger with tracking IDs
+            // Update ledger with tracking IDs
             if (isset($response['ResponseCode']) && $response['ResponseCode'] == "0") {
                 $payment->update([
                     'merchant_request_id' => $response['MerchantRequestID'],
