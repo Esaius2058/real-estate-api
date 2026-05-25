@@ -8,34 +8,67 @@ use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\Property\PropertyResource;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class PropertyController extends Controller
 {
-    public function index(): JsonResponse
+    /**
+     * GET /v1/properties?page=1
+     * Called by propertyApi.getAll() on the frontend.
+     */
+    public function index(): AnonymousResourceCollection
     {
         $properties = Property::latest()->paginate(20);
-        return PropertyResource::collection($properties)->response();
+
+        return PropertyResource::collection($properties);
     }
 
+    /**
+     * POST /v1/properties
+     */
     public function store(StorePropertyRequest $request): JsonResponse
     {
-        $validatedData = $request->validated();
+        $property = Property::create([
+            ...$request->validated(),
+            'user_id' => auth()->id(),
+        ]);
 
-        $validatedData['user_id'] = auth()->id();
-
-        $property = Property::create($validatedData);
-
-        return response()->json(['data' => $property], 201);
+        return (new PropertyResource($property))
+            ->response()
+            ->setStatusCode(201);
     }
 
+    /**
+     * GET /v1/properties/{property}
+     */
     public function show(Property $property): JsonResponse
     {
-        return (new PropertyResource($property->load('images')))->response();
+        return (new PropertyResource($property->load('images')))
+            ->response();
     }
 
+    /**
+     * PUT /v1/properties/{property}
+     */
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
+        $this->authorize('update', $property);
+
         $property->update($request->validated());
-        return (new PropertyResource($property))->response();
+
+        return (new PropertyResource($property->fresh()))
+            ->response();
+    }
+
+    /**
+     * DELETE /v1/properties/{property}
+     */
+    public function destroy(Property $property): JsonResponse
+    {
+        $this->authorize('delete', $property);
+
+        $property->delete();
+
+        return response()->json(['message' => 'Property deleted.'], 200);
     }
 }
