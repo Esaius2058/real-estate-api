@@ -3,31 +3,20 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use App\Models\Agency;
 
 class AgencySeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        DB::table('agencies')->insert([
-            [
-                'name' => 'Prime Real Estate',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'City Skyline Properties',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Milimani Downtown Properties',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        ]);
+        Agency::updateOrCreate(
+            ['id' => 1],
+            ['name' => 'Makao Real Estate HQ', 'location' => 'Nairobi, Kenya']
+        );
+
+        Agency::updateOrCreate(
+            ['id' => 2],
+            ['name' => 'Coastal Properties Ltd', 'location' => 'Mombasa, Kenya']
+        );
     }
 }

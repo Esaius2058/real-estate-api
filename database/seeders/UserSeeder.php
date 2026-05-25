@@ -8,15 +8,12 @@ use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $users = [
             [
-                'name'      => 'Hillary Admin',
-                'email'     => 'admin@gmail.com',
+                'name'      => 'Hillary Sioliula',
+                'email'     => 'hillary@makao.co.ke',
                 'password'  => Hash::make('password123'),
                 'role'      => 'admin',
                 'agency_id' => 1, 
@@ -33,7 +30,7 @@ class UserSeeder extends Seeder
                 'email'     => 'john.smith@gmail.com',
                 'password'  => Hash::make('password123'),
                 'role'      => 'agent',
-                'agency_id' => 2, // Represents an unassigned agent
+                'agency_id' => 2, // He is assigned to Agency 2. If he is unassigned, this MUST be null.
             ]
         ];
 

@@ -31,4 +31,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Payments (with dedicated rate limiting)
     Route::post('/payments/initiate', [PaymentController::class, 'initiate'])
         ->middleware('throttle:payments');
+
+    Route::get('/agency', [AgencyController::class, 'show']);
+    Route::put('/agencies/{agency}', [AgencyController::class, 'update']);
 });
