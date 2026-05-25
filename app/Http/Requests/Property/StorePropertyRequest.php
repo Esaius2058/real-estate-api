@@ -21,11 +21,15 @@ class StorePropertyRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'          => ['required', 'string', 'max:255'],
-            'price'          => ['required', 'numeric', 'min:0'],
-            'bedrooms'       => ['required', 'integer', 'min:0'],
-            'city'           => ['required', 'string', 'max:100'],
-            'status'         => ['required', 'in:available,sold,escrow'],
+            'title'       => 'required|string|max:255',
+            'location'    => 'required|string|max:255',
+            'city'        => 'required|string|max:255',
+            'price'       => 'required|numeric|min:0',
+            'bedrooms'    => 'required|integer|min:0',
+            'baths'       => 'required|integer|min:0',
+            'sqft'        => 'required|integer|min:0',
+            'description' => 'required|string',
+            'status'      => ['required', \Illuminate\Validation\Rule::in(['active', 'under_contract', 'closed', 'expired'])], 
         ];
     }
 }

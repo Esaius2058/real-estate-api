@@ -16,15 +16,18 @@ return new class extends Migration
                 ->constrained()
                 ->cascadeOnDelete();
 
+            $table->foreignId('user_id')->nullable()->constrained('users')->cascadeOnDelete();
+
             $table->enum('type', [
                 'call',
                 'email',
-                'showing'
+                'showing',
+                'system'
             ]);
 
-            $table->text('notes');
+            $table->text('description');
 
-            $table->dateTime('activity_date');
+            $table->dateTime('activity_date')->nullable();
 
             $table->timestamps();
         });

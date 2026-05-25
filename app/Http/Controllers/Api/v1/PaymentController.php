@@ -134,7 +134,7 @@ class PaymentController extends Controller
                 ]);
 
                 $payment->property->update([
-                    'status' => 'Sold' // Or 'Under Offer'
+                    'status' => 'under_contract' 
                 ]);
             });
 

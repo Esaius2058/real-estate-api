@@ -15,9 +15,13 @@ class Lead extends Model
     use BelongsToAgency;
 
     protected $fillable = [
-        'agency_id', 'agent_id', 'name', 'email', 'phone', 
-        'kanban_stage', 'min_budget', 'max_budget', 
-        'min_bedrooms', 'preferred_city'
+        'agency_id',
+        'agent_id',      // This was causing the hard crash
+        'name',          // These were silently stripped
+        'email',
+        'phone',
+        'value',
+        'kanban_stage'
     ];
 
     public function assignedAgent(): BelongsTo

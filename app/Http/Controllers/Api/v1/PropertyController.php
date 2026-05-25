@@ -19,8 +19,13 @@ class PropertyController extends Controller
 
     public function store(StorePropertyRequest $request): JsonResponse
     {
-        $property = Property::create($request->validated());
-        return (new PropertyResource($property))->response()->setStatusCode(201);
+        $validatedData = $request->validated();
+
+        $validatedData['user_id'] = auth()->id();
+
+        $property = Property::create($validatedData);
+
+        return response()->json(['data' => $property], 201);
     }
 
     public function show(Property $property): JsonResponse

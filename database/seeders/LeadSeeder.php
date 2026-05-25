@@ -14,22 +14,24 @@ class LeadSeeder extends Seeder
     {
         DB::table('leads')->insert([
             [
-                'name' => 'John Smith',
-                'user_id' => 3,
-                'kanban_stage' => 'negotiating',
-                'desired_location' => 'Nairobi',
-                'max_budget' => 150000,
                 'agency_id' => 2,
+                'agent_id' => 3, // Replaced 'user_id' with 'agent_id'
+                'name' => 'John Smith',
+                'email' => 'john.smith@example.com', // Added required email
+                'phone' => '+254700000001',
+                'value' => 150000, // Replaced 'max_budget' with 'value'
+                'kanban_stage' => 'offer', // 'negotiating' is not in your enum, use 'offer' or 'contacted'
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Jane Doe',
-                'user_id' => 2,
-                'kanban_stage' => 'viewing',
-                'desired_location' => 'Nairobi',
-                'max_budget' => 100000,
                 'agency_id' => 2,
+                'agent_id' => 2, // Replaced 'user_id' with 'agent_id'
+                'name' => 'Jane Doe',
+                'email' => 'jane.doe@example.com', // Added required email
+                'phone' => '+254700000002',
+                'value' => 100000, // Replaced 'max_budget' with 'value'
+                'kanban_stage' => 'showing', // 'viewing' is not in your enum, use 'showing'
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

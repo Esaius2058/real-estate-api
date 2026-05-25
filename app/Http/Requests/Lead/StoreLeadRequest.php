@@ -12,7 +12,7 @@ class StoreLeadRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -23,7 +23,13 @@ class StoreLeadRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'name'         => ['required', 'string', 'max:255'],
+            'email'        => ['required', 'email', 'max:255'],
+            'phone'        => ['nullable', 'string', 'max:50'],
+            'value'        => ['nullable', 'numeric', 'min:0'],
+            'kanban_stage' => ['required', \Illuminate\Validation\Rule::in([
+                'new', 'contacted', 'showing', 'offer', 'escrow', 'closed', 'lost'
+            ])],
         ];
     }
 }

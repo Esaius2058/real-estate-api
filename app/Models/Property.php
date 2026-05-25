@@ -13,7 +13,18 @@ class Property extends Model
     use BelongsToAgency;
 
     protected $fillable = [
-        'agency_id', 'title', 'price', 'bedrooms', 'city', 'status'
+        'agency_id',
+        'user_id',
+        'title',
+        'price',
+        'location',
+        'city',
+        'bedrooms',
+        'baths',
+        'sqft',
+        'description',
+        'status',
+        'contract_end_date'
     ];
 
     public function images(): HasMany
