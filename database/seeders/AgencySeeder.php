@@ -23,6 +23,11 @@ class AgencySeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Milimani Downtown Properties',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
         ]);
     }
 }
