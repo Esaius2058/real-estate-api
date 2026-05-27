@@ -12,6 +12,7 @@ class Payment extends Model
 
     protected $fillable = [
         'agency_id',
+        'tenant_id',
         'user_id',
         'property_id',
         'amount',

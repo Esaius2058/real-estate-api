@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\v1;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agency;
@@ -12,7 +12,7 @@ class AgencyController extends Controller
     public function show(): JsonResponse
     {
         // Return the authenticated user's agency
-        $agency = Agency::find(auth()->user()->agency_id);
+        $agency = Agency::find(auth()->guard()->user()->agency_id);
         
         if (!$agency) {
             return response()->json(['message' => 'Agency not found'], 404);

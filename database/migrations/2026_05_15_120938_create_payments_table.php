@@ -13,6 +13,8 @@ return new class extends Migration
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
+            //Sets up multi-tenancy grouping link
+            $table->foreignId('agency_id')->constrained()->onDelete('cascade');
             $table->foreignId('tenant_id')->constrained(); 
             $table->foreignId('user_id')->constrained();
             $table->foreignId('property_id')->constrained();

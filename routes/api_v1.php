@@ -7,31 +7,39 @@ use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\EscrowWebhookController;
 use App\Http\Controllers\Api\v1\PaymentController;
+use App\Http\Controllers\Api\V1\AgencyController;
 
-// Public Routes
-Route::post('/register', [AuthenticationController::class, 'register']);
-Route::post('/login', [AuthenticationController::class, 'login']);
+// Wrap everything in a v1 prefix group so routes match 'api/v1/...'
+Route::prefix('v1')->group(function () {
 
-// External Webhooks (No Auth)
-Route::post('/webhooks/escrow', [EscrowWebhookController::class, 'handle']);
-Route::post('/payments/callback', [PaymentController::class, 'callback']);
+    // Public Routes
+    Route::post('/register', [AuthenticationController::class, 'register']);
+    Route::post('/login', [AuthenticationController::class, 'login']);
 
-// Protected Routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthenticationController::class, 'logout']);
-    Route::get('/me', [AuthenticationController::class, 'me']);
+    // External Webhooks (No Auth required for Daraja callback)
+    Route::post('/webhooks/escrow', [EscrowWebhookController::class, 'handle']);
+    Route::post('/payments/callback', [PaymentController::class, 'callback']);
 
-    // Properties
-    Route::apiResource('properties', PropertyController::class);
+    // Protected Routes
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [AuthenticationController::class, 'logout']);
+        Route::get('/me', [AuthenticationController::class, 'me']);
 
-    // Leads
-    Route::apiResource('leads', LeadController::class);
-    Route::patch('leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
-    
-    // Payments (with dedicated rate limiting)
-    Route::post('/payments/initiate', [PaymentController::class, 'initiate'])
-        ->middleware('throttle:payments');
+        // Properties
+        Route::apiResource('properties', PropertyController::class);
 
-    Route::get('/agency', [AgencyController::class, 'show']);
-    Route::put('/agencies/{agency}', [AgencyController::class, 'update']);
+        // Leads
+        Route::apiResource('leads', LeadController::class);
+        Route::patch('leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
+        
+        // Payments & M-Pesa STK Push Engine
+        Route::post('/payments/initiate', [PaymentController::class, 'initiate'])->middleware('throttle:payments');
+        Route::post('/payments/stk-push', [PaymentController::class, 'stkPush']);
+        Route::get('/payments/status/{checkoutRequestID}', [PaymentController::class, 'checkStatus']);
+
+        // Agencies
+        Route::get('/agency', [AgencyController::class, 'show']);
+        Route::put('/agencies/{agency}', [AgencyController::class, 'update']);
+    });
+
 });
