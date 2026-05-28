@@ -19,8 +19,9 @@ class DarajaService
             ? 'https://api.safaricom.co.ke' 
             : 'https://sandbox.safaricom.co.ke';
 
-        $this->shortcode = config('services.mpesa.shortcode');
-        $this->passkey = config('services.mpesa.passkey');
+        // 🔥 FIXED INTELEPHENSE TYPE MISMATCH: Explicitly cast parameters to string
+        $this->shortcode = (string) config('services.mpesa.shortcode');
+        $this->passkey = (string) config('services.mpesa.passkey');
     }
 
     /**
@@ -31,8 +32,8 @@ class DarajaService
         // Tokens live for 1 hour. We cache for 50 minutes to be safe.
         return Cache::remember('mpesa_access_token', now()->addMinutes(50), function () {
             
-            $key = config('services.mpesa.consumer_key');
-            $secret = config('services.mpesa.consumer_secret');
+            $key = (string) config('services.mpesa.consumer_key');
+            $secret = (string) config('services.mpesa.consumer_secret');
 
             $response = Http::withBasicAuth($key, $secret)
                 ->get("{$this->baseUrl}/oauth/v1/generate?grant_type=client_credentials");
@@ -42,7 +43,7 @@ class DarajaService
                 throw new \Exception('Could not authenticate with Safaricom.');
             }
 
-            return $response->json('access_token');
+            return (string) $response->json('access_token');
         });
     }
 
@@ -58,9 +59,8 @@ class DarajaService
         // Clean the phone number to Safaricom's strict format
         $formattedPhone = $this->formatPhoneNumber($phoneNumber);
 
-        // Your ngrok URL goes here for testing. Update this when deploying to production.
-        // Example: https://a1b2c3d4.ngrok.app/api/payments/callback
-        $callbackUrl = env('APP_URL') . '/api/payments/callback'; 
+        // 🔥 ROUTING FIX: Tailored specifically to your app's Api/v1 structure 
+        $callbackUrl = rtrim(env('APP_URL'), '/') . '/api/v1/payments/callback'; 
 
         $payload = [
             'BusinessShortCode' => $this->shortcode,
@@ -73,7 +73,7 @@ class DarajaService
             'PhoneNumber' => $formattedPhone,
             'CallBackURL' => $callbackUrl,
             'AccountReference' => $accountReference,
-            'TransactionDesc' => 'Property Payment',
+            'TransactionDesc' => 'Makao Property Booking Fee',
         ];
 
         Log::info('Initiating STK Push', ['payload' => $payload]);
