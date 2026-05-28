@@ -11,12 +11,12 @@ class AgencySeeder extends Seeder
     {
         Agency::updateOrCreate(
             ['id' => 1],
-            ['name' => 'Makao Real Estate HQ', 'location' => 'Nairobi, Kenya']
+            ['name' => 'Makao Real Estate HQ', 'location' => 'Nairobi, Kenya', 'join_code' => 'MAKAO-1']
         );
 
         Agency::updateOrCreate(
             ['id' => 2],
-            ['name' => 'Coastal Properties Ltd', 'location' => 'Mombasa, Kenya']
+            ['name' => 'Coastal Properties Ltd', 'location' => 'Mombasa, Kenya', 'join_code' => 'COASTAL-1']
         );
     }
 }

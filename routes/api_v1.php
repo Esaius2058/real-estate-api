@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\EscrowWebhookController;
 use App\Http\Controllers\Api\v1\PaymentController;
+use App\Http\Controllers\Api\v1\AgencyController;
 
 // Public Routes
 Route::post('/register', [AuthenticationController::class, 'register']);
@@ -32,6 +33,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments/initiate', [PaymentController::class, 'initiate'])
         ->middleware('throttle:payments');
 
-    Route::get('/agency', [AgencyController::class, 'show']);
-    Route::put('/agencies/{agency}', [AgencyController::class, 'update']);
+    Route::post('/vault/initialize-workspace', [AgencyController::class, 'store']);
+    Route::post('/agency/join',                [AgencyController::class, 'join']);
+    Route::get('/agency',                      [AgencyController::class, 'show']);
+    Route::put('/agency/{agency}',             [AgencyController::class, 'update']);
 });

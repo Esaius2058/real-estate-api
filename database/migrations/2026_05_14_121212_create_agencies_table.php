@@ -12,6 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('location')->nullable();
+            $table->string('join_code', 12)->unique()->nullable();
             $table->enum('subscription_tier', [
                 'basic',
                 'pro',
