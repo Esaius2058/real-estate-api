@@ -9,7 +9,6 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthenticationController extends Controller
 {
@@ -50,10 +49,11 @@ class AuthenticationController extends Controller
     {
         $user = User::where('email', $request->email)->first();
 
+        // Standardized to send an explicit 401 response instead of a structural 422 framework exception
         if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Invalid credentials.'],
-            ]);
+            return response()->json([
+                'message' => 'Invalid email or password credentials.'
+            ], 401);
         }
 
         return response()->json([
@@ -75,6 +75,9 @@ class AuthenticationController extends Controller
         ]);
     }
 
+    /**
+     * Fetch authenticatable session data on state restoration.
+     */
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -96,9 +99,13 @@ class AuthenticationController extends Controller
         ]);
     }
 
-    public function logout(): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
-        auth()->user()->tokens()->delete();
+        $user = $request->user();
+
+        if ($user) {
+            $user->tokens()->delete(); // Clear out current active personal access tokens safely
+        }
 
         return response()->json(['message' => 'Logged out successfully']);
     }

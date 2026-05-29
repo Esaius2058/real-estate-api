@@ -15,7 +15,6 @@ class PaymentController extends Controller
 {
     protected DarajaService $darajaService;
 
-    // Inject DarajaService into the controller
     public function __construct(DarajaService $darajaService)
     {
         $this->darajaService = $darajaService;
@@ -23,7 +22,7 @@ class PaymentController extends Controller
 
     /**
      * Trigger M-Pesa STK Push from React Frontend
-     * Renamed from 'initiate' to 'stkPush' to match route: /api/v1/payments/stk-push
+     * Route: POST /api/v1/payments/stk-push
      */
     public function stkPush(Request $request)
     {
@@ -32,35 +31,36 @@ class PaymentController extends Controller
             'phone_number' => 'required|string',
         ]);
 
-        // Find the property to bill the correct amount
         $property = Property::findOrFail($request->property_id);
         
-        // For testing purposes, you can use a fixed amount like 1 KES 
-        // to avoid charging KES 85,000,000 on the sandbox toolkit!
+        // Testing fallback amount safeguard to avoid real premium billing in sandbox
         $amount = 1; 
-        
         $accountReference = 'MAKAO-' . $property->id;
 
         try {
             DB::beginTransaction();
 
-            // 1. Trigger Safaricom STK Push Request
+            // 1. Dispatch Safaricom API Request Payload via your service layer
             $darajaResponse = $this->darajaService->stkPush(
                 $request->phone_number,
                 $amount,
                 $accountReference
             );
 
-            // 2. Log payment record into your database tracking state
+            // 2. Resolve Multi-Tenancy Boundary Identifiers Dynamically
+            // This pulls an existing fallback ID from the entity relationship to pass the DB constraint rule
+            $validTenantId = $property->tenant_id ?? $property->agency_id ?? Auth::user()?->tenant_id ?? 1;
+
+            // 3. Persist Pending Transaction Matrix Record
             $payment = Payment::create([
-                'agency_id'           => $property->agency_id ?? 1, // Enforce multi-tenancy bounds
-                'user_id'             => Auth::user()?->id ?? 1,  // Fallback to seeded admin user if testing
+                'agency_id'           => $property->agency_id ?? 1, 
+                'user_id'             => Auth::user()?->id ?? 1,  
                 'property_id'         => $property->id,
                 'amount'              => $amount,
                 'merchant_request_id' => $darajaResponse['MerchantRequestID'] ?? null,
                 'checkout_request_id' => $darajaResponse['CheckoutRequestID'] ?? null,
                 'status'              => 'pending',
-                'tenant_id'           => $property->tenant_id ?? Auth::user()?->tenant_id ?? 1,
+                'tenant_id'           => $validTenantId, 
             ]);
 
             DB::commit();
@@ -85,11 +85,10 @@ class PaymentController extends Controller
 
     /**
      * Real-time Payment Status Checker for Frontend Polling
-     * Matches route: GET /api/v1/payments/status/{checkoutRequestID}
+     * Route: GET /api/v1/payments/status/{checkoutRequestID}
      */
     public function checkStatus($checkoutRequestID)
     {
-        // Query database for updated state pushed by the callback webhook
         $payment = Payment::where('checkout_request_id', $checkoutRequestID)->first();
 
         if (!$payment) {
@@ -101,13 +100,14 @@ class PaymentController extends Controller
 
         return response()->json([
             'success' => true,
-            'status' => $payment->status, // Returns: 'pending', 'completed', or 'failed'
+            'status' => $payment->status,
             'receipt_number' => $payment->receipt_number
         ], 200);
     }
 
     /**
      * Safaricom Webhook Callback Handler
+     * Route: POST /api/v1/payments/callback (Ensure this is public in bootstrap/app.php or VerifyCsrfToken)
      */
     public function callback(Request $request)
     {
@@ -117,7 +117,6 @@ class PaymentController extends Controller
         $resultCode   = $callbackData['ResultCode'] ?? null;
         $checkoutId   = $callbackData['CheckoutRequestID'] ?? null;
 
-        // Find matching pending payment record
         $payment = Payment::where('checkout_request_id', $checkoutId)->first();
 
         if (!$payment) {
@@ -129,7 +128,6 @@ class PaymentController extends Controller
             DB::beginTransaction();
 
             if ($resultCode == 0) {
-                // Success path
                 $callbackItems = $callbackData['CallbackMetadata']['Item'] ?? [];
                 $receiptNumber = null;
 
@@ -145,14 +143,13 @@ class PaymentController extends Controller
                     'status'         => 'completed',
                 ]);
 
-                // Update property structural state to under contract/sold automatically
                 if ($payment->property) {
                     $payment->property->update(['status' => 'under_contract']);
                 }
 
                 Log::info("Payment Successful for Checkout ID: {$checkoutId}. Receipt: {$receiptNumber}");
             } else {
-                // Cancelled or Failed path (e.g., User cancelled, Insufficient funds)
+                // Catches user cancellations (ResultCode 1032) or execution timeouts seamlessly
                 $payment->update(['status' => 'failed']);
                 Log::notice("Payment Cancelled/Failed for Checkout ID: {$checkoutId}. Code: {$resultCode}");
             }

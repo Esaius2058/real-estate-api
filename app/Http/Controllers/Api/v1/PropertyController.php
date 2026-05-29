@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Api\v1;
+use Illuminate\Support\Facades\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Property;
@@ -30,7 +31,7 @@ class PropertyController extends Controller
     {
         $property = Property::create([
             ...$request->validated(),
-            'user_id' => auth()->id(),
+            'user_id' => Auth::id(),
         ]);
 
         return (new PropertyResource($property))
@@ -40,9 +41,27 @@ class PropertyController extends Controller
 
     /**
      * GET /v1/properties/{property}
+     * Bulletproofed to handle both implicit model instances and raw IDs safely.
      */
-    public function show(Property $property): JsonResponse
+    public function show(mixed $property): JsonResponse
     {
+        // If route parameter binding failed or was named {id}, fetch manually
+        if (!$property instanceof Property) {
+            $property = Property::find($property);
+        }
+
+        if (!$property) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Property record not found in database.'
+            ], 404);
+        }
+
+        // Force ensure status has a fallback value for the frontend canvas
+        if (empty($property->status)) {
+            $property->status = 'active';
+        }
+
         return (new PropertyResource($property->load('images')))
             ->response();
     }
@@ -50,8 +69,12 @@ class PropertyController extends Controller
     /**
      * PUT /v1/properties/{property}
      */
-    public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
+    public function update(UpdatePropertyRequest $request, mixed $property): JsonResponse
     {
+        if (!$property instanceof Property) {
+            $property = Property::findOrFail($property);
+        }
+
         $this->authorize('update', $property);
 
         $property->update($request->validated());
@@ -63,8 +86,12 @@ class PropertyController extends Controller
     /**
      * DELETE /v1/properties/{property}
      */
-    public function destroy(Property $property): JsonResponse
+    public function destroy(mixed $property): JsonResponse
     {
+        if (!$property instanceof Property) {
+            $property = Property::findOrFail($property);
+        }
+
         $this->authorize('delete', $property);
 
         $property->delete();
