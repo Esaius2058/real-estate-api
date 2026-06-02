@@ -32,6 +32,7 @@ class PropertyController extends Controller
         $property = Property::create([
             ...$request->validated(),
             'user_id' => Auth::id(),
+            'agncy_id' => Auth::user()->agency_id
         ]);
 
         return (new PropertyResource($property))

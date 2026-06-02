@@ -47,10 +47,6 @@ class PaymentController extends Controller
                 $accountReference
             );
 
-            // 2. Resolve Multi-Tenancy Boundary Identifiers Dynamically
-            // This pulls an existing fallback ID from the entity relationship to pass the DB constraint rule
-            $validTenantId = $property->tenant_id ?? $property->agency_id ?? Auth::user()?->tenant_id ?? 1;
-
             // 3. Persist Pending Transaction Matrix Record
             $payment = Payment::create([
                 'agency_id'           => $property->agency_id ?? 1, 
@@ -60,7 +56,6 @@ class PaymentController extends Controller
                 'merchant_request_id' => $darajaResponse['MerchantRequestID'] ?? null,
                 'checkout_request_id' => $darajaResponse['CheckoutRequestID'] ?? null,
                 'status'              => 'pending',
-                'tenant_id'           => $validTenantId, 
             ]);
 
             DB::commit();

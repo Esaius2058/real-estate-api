@@ -60,7 +60,7 @@ class DarajaService
         $formattedPhone = $this->formatPhoneNumber($phoneNumber);
 
         // 🔥 ROUTING FIX: Tailored specifically to your app's Api/v1 structure 
-        $callbackUrl = rtrim(env('APP_URL'), '/') . '/api/v1/payments/callback'; 
+        $callbackUrl = rtrim(env('MPESA_CALLBACK_URL'), '/') . '/api/v1/payments/callback'; 
 
         $payload = [
             'BusinessShortCode' => $this->shortcode,
@@ -82,8 +82,13 @@ class DarajaService
             ->post("{$this->baseUrl}/mpesa/stkpush/v1/processrequest", $payload);
 
         if ($response->failed()) {
-            Log::error('STK Push Request Failed', ['response' => $response->json()]);
-            throw new \Exception('Safaricom rejected the STK Push request.');
+            $errorData = $response->json();
+            Log::error('STK Push Request Failed', ['response' => $errorData]);
+            
+            // Extract Safaricom's exact error message
+            $safaricomError = $errorData['errorMessage'] ?? $errorData['CustomerMessage'] ?? 'Unknown Safaricom Error';
+            
+            throw new \Exception("Daraja Error: " . $safaricomError);
         }
 
         return $response->json();

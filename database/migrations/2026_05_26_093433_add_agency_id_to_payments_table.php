@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::table('payments', function (Blueprint $table) {
             // Appends agency_id safely right after the primary id column
-            $table->foreignId('agency_id')->after('id')->default(1)->constrained()->onDelete('cascade');
+            if (!Schema::hasColumn('payments', 'agency_id')) {
+                $table->foreignId('agency_id')->default(1)->after('id')->constrained();
+            }
         });
     }
 
