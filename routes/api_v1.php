@@ -20,6 +20,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Properties
     Route::apiResource('properties', PropertyController::class);
+    Route::post('properties/{property}/images', [PropertyController::class, 'attachImage']);
 
     // Leads
     Route::apiResource('leads', LeadController::class);
