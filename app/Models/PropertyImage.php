@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PropertyImage extends Model
 {
     protected $fillable = [
-        'property_id', 'image_path', 'order'
+        'property_id', 's3_path', 'is_primary'
     ];
 
     public function property(): BelongsTo
