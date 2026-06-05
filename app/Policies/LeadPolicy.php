@@ -16,8 +16,8 @@ class LeadPolicy
     {
         if ($user->role === 'admin') return true;
         
-        // Ensure column name matches your DB (user_id or assigned_agent_id)
-        return $user->id === $lead->assigned_agent_id; 
+        // Ensure column name matches your DB (agent_id or assigned_agent_id)
+       return $user->id === $lead->agent_id;
     }
 
     public function create(User $user): bool
@@ -29,13 +29,15 @@ class LeadPolicy
     {
         if ($user->role === 'admin') return true;
         
-        return $user->id === $lead->assigned_agent_id;
+        // The Agent CAN edit, but ONLY if the lead is assigned to them
+        return $user->id === $lead->agent_id;
     }
 
     public function delete(User $user, Lead $lead): bool
     {
         if ($user->role === 'admin') return true;
         
-        return $user->id === $lead->assigned_agent_id;
+        // The Agent CAN delete, but ONLY if the lead is assigned to them
+        return $user->id === $lead->agent_id;
     }
 }

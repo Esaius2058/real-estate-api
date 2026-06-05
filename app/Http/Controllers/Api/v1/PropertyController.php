@@ -57,11 +57,14 @@ class PropertyController extends Controller
     public function show($id): JsonResponse
     {
         // Cache the individual property for 60 minutes
-        $property = Cache::remember("property_show_{$id}", now()->addMinutes(60), function () use ($id) {
-            return Property::with(['images', 'agent'])->findOrFail($id);
+        $propertyData = Cache::remember("property_show_{$id}", now()->addMinutes(60), function () use ($id) {
+            $property = Property::with(['images', 'agent'])->findOrFail($id);
+            
+            // CRITICAL FIX: Resolve the Eloquent Model to a pure array BEFORE caching
+            return (new PropertyResource($property))->response()->getData(true);
         });
 
-        return response()->json($property);
+        return response()->json($propertyData);
     }
 
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse

@@ -26,8 +26,8 @@ class LeadController extends Controller
             $query = Lead::with('assignedAgent')->latest();
 
             if ($user->role === 'agent') {
-                // Ensure this matches your database column (assigned_agent_id or user_id)
-                $query->where('assigned_agent_id', $user->id); 
+                // Ensure this matches your database column (assigned_agent_id or agent_id)
+                $query->where('agent_id', $user->id);
             }
 
             return LeadResource::collection($query->paginate(20))->response()->getData(true);
@@ -43,7 +43,7 @@ class LeadController extends Controller
 
         // Strip and force secure ownership IDs BEFORE passing to the service
         $validated['agency_id'] = $user->agency_id;
-        $validated['assigned_agent_id'] = $user->id; // Assign to the creator by default
+        $validated['agent_id'] = $user->id; // Assign to the creator by default
 
         $lead = $this->leadService->createLead($validated, $user->id);
 
