@@ -17,57 +17,70 @@ class LeadController extends Controller
 
     public function index(): JsonResponse
     {
-        $agencyId = auth()->user()->agency_id;
+        $user = auth()->user();
         $page = request()->get('page', 1);
 
-        $cacheKey = "agency_{$agencyId}_leads_page_{$page}";
+        $cacheKey = "agency_{$user->agency_id}_user_{$user->id}_leads_page_{$page}";
 
-        // Cache the Kanban board / leads list for 30 minutes
-        $leads = Cache::remember($cacheKey, now()->addMinutes(30), function () {
-            // Global scope automatically filters to the auth user's agency.
-            return Lead::with('assignedAgent')->latest()->paginate(20);
+        $responseData = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($user) {
+            $query = Lead::with('assignedAgent')->latest();
+
+            if ($user->role === 'agent') {
+                // Ensure this matches your database column (assigned_agent_id or user_id)
+                $query->where('assigned_agent_id', $user->id); 
+            }
+
+            return LeadResource::collection($query->paginate(20))->response()->getData(true);
         });
         
-        return LeadResource::collection($leads)->response();
+        return response()->json($responseData);
     }
 
     public function store(StoreLeadRequest $request): JsonResponse
     {
-        $lead = $this->leadService->createLead($request->validated(), auth()->id());
+        $validated = $request->validated();
+        $user = auth()->user();
 
-        // CRITICAL: Clear the first page cache so the new lead appears on the Kanban board instantly
-        $agencyId = auth()->user()->agency_id;
-        Cache::forget("agency_{$agencyId}_leads_page_1");
+        // Strip and force secure ownership IDs BEFORE passing to the service
+        $validated['agency_id'] = $user->agency_id;
+        $validated['assigned_agent_id'] = $user->id; // Assign to the creator by default
 
-        return (new LeadResource($lead))
-            ->response()
-            ->setStatusCode(201);
+        $lead = $this->leadService->createLead($validated, $user->id);
+
+        Cache::forget("agency_{$user->agency_id}_user_{$user->id}_leads_page_1");
+        Cache::forget("agency_{$user->agency_id}_leads_page_1"); 
+
+        return response()->json(['data' => $lead], 201);
     }
 
     public function show(Lead $lead): JsonResponse
     {
+        // FIX: Verify the user is allowed to view this specific lead
+        $this->authorize('view', $lead);
+
         $agencyId = auth()->user()->agency_id;
         $cacheKey = "agency_{$agencyId}_lead_{$lead->id}";
 
-        // Cache the individual lead and its heavy relationships (activities, documents)
-        $cachedLead = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($lead) {
-            return $lead->load(['activities', 'documents']);
+        $cachedLeadData = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($lead) {
+            $lead->load(['activities', 'documents']);
+            return (new LeadResource($lead))->response()->getData(true);
         });
 
-        return (new LeadResource($cachedLead))->response();
+        return response()->json($cachedLeadData);
     }
 
     public function update(UpdateLeadRequest $request, Lead $lead): JsonResponse
     {
+        // FIX: Verify the user is allowed to update this specific lead
+        $this->authorize('update', $lead);
+
         $this->leadService->updateLead($lead, $request->validated(), auth()->id());
 
         $agencyId = auth()->user()->agency_id;
 
-        // CRITICAL: Invalidate both the specific lead's cache AND the main Kanban board cache
         Cache::forget("agency_{$agencyId}_lead_{$lead->id}");
         Cache::forget("agency_{$agencyId}_leads_page_1");
 
-        // Return fresh data to the frontend to update the UI
         return (new LeadResource($lead->fresh(['activities', 'documents'])))->response();
     }
 }

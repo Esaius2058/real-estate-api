@@ -39,17 +39,23 @@ class PropertyPolicy
      */
     public function update(User $user, Property $property): bool
     {
-        // Allow if user is the direct creator OR belongs to the same agency
-        return $user->id === $property->user_id || $user->agency_id === $property->agency_id;
+        // Admins can edit any property within their agency 
+        // (Agency isolation is already handled by AgencyScope on retrieval)
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        // Agents can ONLY edit properties they directly own
+        return $user->id === $property->user_id;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     * Usually mirrors the update logic.
-     */
     public function delete(User $user, Property $property): bool
     {
-        return $user->id === $property->user_id || $user->agency_id === $property->agency_id;
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        return $user->id === $property->user_id;
     }
 
     /**

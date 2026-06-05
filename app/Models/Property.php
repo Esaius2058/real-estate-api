@@ -10,10 +10,11 @@ use App\Models\User;
 use App\Models\PropertyImage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory; // <-- Add this import
 
 class Property extends Model
 {
-    use BelongsToAgency;
+    use HasFactory, BelongsToAgency; // <-- Add HasFactory here
 
     protected $fillable = [
         'agency_id',
@@ -45,7 +46,6 @@ class Property extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-
 
     public function images(): HasMany
     {

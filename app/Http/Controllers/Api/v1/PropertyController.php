@@ -9,54 +9,54 @@ use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\Property\PropertyResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class PropertyController extends Controller
 {
-    /**
-     * GET /v1/properties?page=1
-     */
-    public function index(Request $request)
+    public function index(): JsonResponse
     {
-        // Get the requested page, default to 1
-        $page = $request->get('page', 1);
+        $user = auth()->user();
+        $page = request()->get('page', 1);
 
-        // Define a unique cache key for this specific page
-        $cacheKey = "properties_page_{$page}";
+        $cacheKey = "agency_{$user->agency_id}_user_{$user->id}_properties_page_{$page}";
 
-        // Remember the query results for 60 minutes
-        $properties = Cache::remember($cacheKey, now()->addMinutes(60), function () {
-            // This closure ONLY executes if the cache is empty/expired
-            return Property::with(['images', 'agent'])
-                ->where('status', 'active')
-                ->latest()
-                ->paginate(15); // Adjust pagination as needed
+        $responseData = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($user) {
+            
+            // FIX: Query the Property model, not Lead.
+            $query = Property::with(['agent', 'images'])->latest();
+
+            // Role-based isolation
+            if ($user->role === 'agent') {
+                $query->where('user_id', $user->id); 
+            }
+
+            return PropertyResource::collection($query->paginate(20))->response()->getData(true);
         });
-
-        return response()->json($properties);
+        
+        return response()->json($responseData);
     }
 
-    /**
-     * POST /v1/properties
-     */
-    public function store(Request $request)
+    public function store(StorePropertyRequest $request): JsonResponse
     {
-        // Create the new property
-        $property = Property::create($request->all());
+        $validated = $request->validated();
+        $user = auth()->user();
 
-        // CRITICAL: Clear the first page of the index cache so the new listing appears immediately
-        Cache::forget("properties_page_1"); 
+        // Strip and force secure ownership IDs
+        $validated['agency_id'] = $user->agency_id;
+        $validated['user_id'] = $user->id; 
 
-        return response()->json(['message' => 'Property created successfully', 'data' => $property], 201);
+        $property = Property::create($validated);
+
+        // Invalidate caches
+        Cache::forget("agency_{$user->agency_id}_user_{$user->id}_properties_page_1");
+        Cache::forget("agency_{$user->agency_id}_properties_page_1"); 
+
+        return response()->json(['data' => $property], 201);
     }
 
-    /**
-     * GET /v1/properties/{property}
-     */
-    public function show($id)
+    public function show($id): JsonResponse
     {
-        // Cache the individual property for 60 minutes based on its unique ID
+        // Cache the individual property for 60 minutes
         $property = Cache::remember("property_show_{$id}", now()->addMinutes(60), function () use ($id) {
             return Property::with(['images', 'agent'])->findOrFail($id);
         });
@@ -64,35 +64,25 @@ class PropertyController extends Controller
         return response()->json($property);
     }
 
-    /**
-     * PUT /v1/properties/{property}
-     */
-    public function update(Request $request, $id)
+    public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
-        $property = Property::findOrFail($id);
-        $property->update($request->all());
+        $this->authorize('update', $property);
 
-        // CRITICAL: You must invalidate the cache when a record is updated, 
-        // otherwise users will continue to see stale data.
-        // For simplicity, we flush the specific page cache, or use Cache Tags if using Redis.
+        $property->update($request->validated());
+
         Cache::forget("properties_page_1"); 
         
         return response()->json(['message' => 'Updated successfully', 'data' => $property]);
     }
 
-    /**
-     * POST /v1/properties/{property}/images
-     */
     public function attachImage(Request $request, Property $property): JsonResponse
     {
-        $request->validate([
-            'url' => ['required', 'url'],
-        ]);
+        $request->validate(['url' => ['required', 'url']]);
 
         $this->authorize('update', $property);
 
         $image = $property->images()->create([
-            's3_path' => $request->url, // fixed: was writing to 'url', column is 's3_path'
+            's3_path' => $request->url, 
         ]);
 
         return response()->json([
@@ -102,14 +92,11 @@ class PropertyController extends Controller
         ], 201);
     }
 
-    /**
-     * DELETE /v1/properties/{property}
-     */
     public function destroy(Property $property): JsonResponse
     {
         $this->authorize('delete', $property);
 
-        $property->images()->delete(); // clean up related images first
+        $property->images()->delete(); 
         $property->delete();
 
         return response()->json(['message' => 'Property deleted.'], 200);
