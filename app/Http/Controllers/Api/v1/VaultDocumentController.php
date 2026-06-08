@@ -3,79 +3,101 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document; // Ensure you import your actual Document model
+use App\Models\SecureDocument; 
 use App\Http\Requests\Document\GenerateUploadUrlRequest;
 use App\Services\Vault\SecureDocumentService;
+use App\Services\OCR\OcrService; 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class VaultDocumentController extends Controller
 {
-    public function __construct(private SecureDocumentService $vaultService) {}
+    // Injected the OCR Service into the constructor
+    public function __construct(
+        private SecureDocumentService $vaultService,
+        private OcrService $ocrService
+    ) {}
 
-    /**
-     * 1. GET /api/v1/vault/documents
-     * Fetches all secure documents for the authenticated agency's vault.
-     */
     public function index(Request $request): JsonResponse
     {
         $agencyId = auth()->user()->agency_id;
 
-        $documents = Document::where('agency_id', $agencyId)
+        $documents = SecureDocument::where('agency_id', $agencyId)
             ->latest()
             ->get();
 
         return response()->json(['data' => $documents]);
     }
 
-    /**
-     * 2. POST /api/v1/vault/documents
-     * Persists the document metadata to the database AFTER the frontend uploads to AWS/Supabase.
-     */
     public function store(Request $request): JsonResponse
     {
+        // Validate the incoming React payload
         $validated = $request->validate([
-            's3_path' => 'required|string',
-            'type'    => 'required|string',
-            'user_id' => 'nullable|string', // The Client ID mapped from the React modal
-            'notes'   => 'nullable|string',
-            'status'  => 'required|string|in:pending_review,approved,rejected',
+            'client_name'   => 'required|string|max:255',
+            'client_email'  => 'required|email', // Used to check for duplicates
+            'client_phone'  => 'nullable|string',
+            's3_path'       => 'required|string',
+            'type'          => 'required|string',
+            'temporary_url' => 'required|url',
+            'notes'         => 'nullable|string',
         ]);
 
-        $document = Document::create([
-            'agency_id'   => auth()->user()->agency_id,
-            'uploaded_by' => auth()->id(),
-            's3_path'     => $validated['s3_path'],
-            'type'        => $validated['type'],
-            'user_id'     => $validated['user_id'],
-            'notes'       => $validated['notes'],
-            'status'      => $validated['status'],
+        // Create the Client Profile on the fly (or fetch if email exists)
+        $client = \App\Models\User::firstOrCreate(
+            ['email' => $validated['client_email']],
+            [
+                'name'      => $validated['client_name'],
+                'phone'     => $validated['client_phone'],
+                'agency_id' => auth()->user()->agency_id,
+                'password'  => bcrypt(str()->random(16)), 
+            ]
+        );
+
+        // Insert using the EXACT column names from your database schema
+        $document = SecureDocument::create([
+            'agency_id'           => auth()->user()->agency_id,
+            'uploaded_by'         => auth()->id(),
+            'documentable_type'   => 'App\Models\User', 
+            'documentable_id'     => $client->id, // <--- This is the critical fix
+            'document_type'       => $validated['type'], 
+            's3_private_path'     => $validated['s3_path'],
+            'notes'               => $validated['notes'] ?? null,
+            'verification_status' => 'pending_review',
         ]);
 
-        return response()->json(['data' => $document], 201);
+        // Process the OCR Image
+        $rawText = $this->ocrService->extractText($validated['temporary_url']);
+
+        if ($rawText) {
+            $analysis = $this->ocrService->analyzeKycData($rawText);
+
+            // Update the document with OCR results
+            $document->update([
+                'extracted_text'      => $rawText,
+                'ml_data'             => $analysis,
+                'verification_status' => $analysis['requires_manual_review'] ? 'pending_review' : 'verified' 
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Document uploaded and queued for processing.',
+            'data'    => $document
+        ], 201);
     }
 
-    /**
-     * 3. PATCH /api/v1/vault/documents/{id}/status
-     * Admin/ML integration endpoint to approve or reject KYC documents.
-     */
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
             'status' => 'required|in:pending_review,approved,rejected'
         ]);
 
-        $document = Document::where('agency_id', auth()->user()->agency_id)->findOrFail($id);
+        $document = SecureDocument::where('agency_id', auth()->user()->agency_id)->findOrFail($id);
         
         $document->update(['status' => $validated['status']]);
 
         return response()->json(['data' => $document]);
     }
 
-    /**
-     * 4. POST /api/v1/vault/presigned-url
-     * Generates the temporary AWS/Supabase upload URL for the React frontend.
-     */
     public function generateUploadUrl(GenerateUploadUrlRequest $request): JsonResponse
     {
         $uploadData = $this->vaultService->generatePresignedUrl(
@@ -87,7 +109,7 @@ class VaultDocumentController extends Controller
         return response()->json([
             'upload_url' => $uploadData['url'],
             'file_path'  => $uploadData['path'],
-            'expires_in' => 300 // 5 minutes
+            'expires_in' => 300
         ]);
     }
 }
