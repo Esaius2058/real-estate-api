@@ -64,5 +64,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // KYC / Document Approval Queue
         Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
+        
+         // NEW: Admin Property Management
+        Route::get('/admin/properties', [App\Http\Controllers\Api\v1\AdminPropertyController::class, 'index']);
+        Route::patch('/admin/properties/{property}/status', [App\Http\Controllers\Api\v1\AdminPropertyController::class, 'updateStatus']);
+        Route::delete('/admin/properties/{property}', [App\Http\Controllers\Api\v1\AdminPropertyController::class, 'destroy']);
     });
 });

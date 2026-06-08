@@ -19,17 +19,17 @@ class StorePropertyRequest extends FormRequest
      * Get the validation rules that apply to the request.
      */
     public function rules(): array
-    {
-        return [
-            'title'       => 'required|string|max:255',
-            'location'    => 'required|string|max:255',
-            'city'        => 'required|string|max:255',
-            'price'       => 'required|numeric|min:0',
-            'bedrooms'    => 'required|integer|min:0',
-            'baths'       => 'required|integer|min:0',
-            'sqft'        => 'required|integer|min:0',
-            'description' => 'required|string',
-            'status'      => ['required', \Illuminate\Validation\Rule::in(['active', 'under_contract', 'closed', 'expired'])], 
-        ];
-    }
+{
+    return [
+        'title'       => 'required|string|max:255',
+        'location'    => 'required|string|max:255',
+        'city'        => 'required|string|max:255',
+        'price'       => 'required|numeric|min:0',
+        'bedrooms'        => 'required|integer|min:0', 
+        'baths'       => 'required|integer|min:0',
+        'sqft'        => 'required|integer|min:0',
+        'description' => 'required|string',
+        'status'      => ['required', \Illuminate\Validation\Rule::in(['Active', 'Under Contract', 'Closed', 'Expired'])], 
+    ];
+}
 }
