@@ -14,29 +14,65 @@ class OcrService
     {
         $apiKey = config('services.ocrspace.key');
 
-        $response = Http::timeout(30)->post('https://api.ocr.space/parse/image', [
-            'apikey' => $apiKey,
-            'url' => $signedImageUrl,
-            'language' => 'eng',
-            'isOverlayRequired' => false,
-            'OCREngine' => 2, // Engine 2 is optimized for numbers/special characters on IDs
+        if (!$apiKey) {
+            Log::error('OCR.Space API key is not configured.');
+            return null;
+        }
+        
+        Log::info('OCR.Space request firing', ['url' => $signedImageUrl]);
+
+        $response = Http::timeout(30)
+            ->asMultipart()  // ← OCR.Space requires multipart, not form params
+            ->post('https://api.ocr.space/parse/image', [
+                [
+                    'name'     => 'apikey',
+                    'contents' => $apiKey,
+                ],
+                [
+                    'name'     => 'url',
+                    'contents' => $signedImageUrl,
+                ],
+                [
+                    'name'     => 'language',
+                    'contents' => 'eng',
+                ],
+                [
+                    'name'     => 'isOverlayRequired',
+                    'contents' => 'false',
+                ],
+                [
+                    'name'     => 'OCREngine',
+                    'contents' => '2',
+                ],
+            ]);
+
+        Log::info('OCR.Space raw response', [
+            'status' => $response->status(),
+            'body'   => $response->body(),
         ]);
 
         if ($response->successful()) {
             $data = $response->json();
-            
-            // Check if the API threw an internal error (e.g., file too large)
-            if (isset($data['IsErroredOnProcessing']) && $data['IsErroredOnProcessing'] === true) {
-                Log::error('OCR.Space Processing Error', ['error' => $data['ErrorMessage'] ?? 'Unknown']);
+
+            if (!empty($data['IsErroredOnProcessing'])) {
+                Log::error('OCR.Space processing error', [
+                    'error' => $data['ErrorMessage'] ?? 'Unknown',
+                ]);
                 return null;
             }
 
-            if (!empty($data['ParsedResults'])) {
+            if (!empty($data['ParsedResults'][0]['ParsedText'])) {
                 return $data['ParsedResults'][0]['ParsedText'];
             }
+
+            Log::warning('OCR.Space returned no parsed text', ['data' => $data]);
+            return null;
         }
 
-        Log::error('OCR API Connection Failed', ['response' => $response->body()]);
+        Log::error('OCR.Space HTTP error', [
+            'status'   => $response->status(),
+            'response' => $response->body(),
+        ]);
         return null;
     }
 

@@ -56,9 +56,18 @@ class AuthenticationController extends Controller
             ], 401);
         }
 
+        // Wipe old tokens to prevent database bloat from multiple logins
+        $user->tokens()->delete();
+
+        // Check if the user requested a long-lived session
+        $expiration = $request->boolean('remember') ? now()->addDays(7) : now()->addHours(2);
+
+        // Issue the token with a strict expiration date
+        $token = $user->createToken('makao-auth-token', ['*'], $expiration)->plainTextToken;
+
         return response()->json([
             'message' => 'Login successful',
-            'token'   => $user->createToken('api-token')->plainTextToken,
+            'token'   => $token,
             'user'    => [
                 'id'        => $user->id,
                 'name'      => $user->name,
