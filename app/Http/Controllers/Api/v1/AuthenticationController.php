@@ -99,11 +99,16 @@ class AuthenticationController extends Controller
                 'agency_id' => $user->agency_id,
             ],
             'profile' => [
-                'id'       => $user->id,
-                'email'    => $user->email,
-                'role'     => ucfirst($user->role),
-                'agencyId' => $user->agency_id,
-                'name'     => $user->name,
+                'id'        => $user->id,
+                'email'     => $user->email,
+                'role'      => ucfirst($user->role),
+                'agencyId'  => $user->agency_id,
+                'name'      => $user->name,
+                // Pass down the nested agency object so React can read profile.agency.name
+                'agency'    => $user->agency ? [
+                    'id'   => $user->agency->id,
+                    'name' => $user->agency->name,
+                ] : null,
             ],
         ]);
     }
