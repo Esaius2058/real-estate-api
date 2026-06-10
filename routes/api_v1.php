@@ -13,6 +13,10 @@ use App\Http\Controllers\Api\v1\VaultDocumentController;
 // ── Public Routes ────────────────────────────────────────────────────────
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+// Universal Read Access (Clients, Agents, Admins)
+Route::get('/properties', [PropertyController::class, 'index']);
+Route::get('/properties/{property}', [PropertyController::class, 'show']);
+Route::post('/properties/shares/sign-images', [PropertyController::class, 'generatePublicSignedUrls']);
 
 // ── Protected Ecosystem ──────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -29,25 +33,23 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/vault/initialize-workspace', [AgencyController::class, 'store']);
     Route::post('/agency/join', [AgencyController::class, 'join']);
 
-    // Universal Read Access (Clients, Agents, Admins)
-    Route::get('properties', [PropertyController::class, 'index']);
-    Route::get('properties/{property}', [PropertyController::class, 'show']);
-
-
     // ── Staff Routes (Agents & Admins) ───────────────────────────────────
     Route::middleware('role:agent,admin')->group(function () {
         
         Route::get('/agency', [AgencyController::class, 'show']);
 
+        Route::get('/agent/properties', [PropertyController::class, 'agencyIndex']);
+        Route::get('/agent/properties/{property}', [PropertyController::class, 'show']);
+
         // Property Mutations
-        Route::post('properties', [PropertyController::class, 'store']);
-        Route::put('properties/{property}', [PropertyController::class, 'update']);
-        Route::delete('properties/{property}', [PropertyController::class, 'destroy']);
-        Route::post('properties/{property}/images', [PropertyController::class, 'attachImage']);
+        Route::post('/properties', [PropertyController::class, 'store']);
+        Route::put('/properties/{property}', [PropertyController::class, 'update']);
+        Route::delete('/properties/{property}', [PropertyController::class, 'destroy']);
+        Route::post('/properties/{property}/images', [PropertyController::class, 'attachImage']);
 
         // Lead Management
-        Route::apiResource('leads', LeadController::class);
-        Route::patch('leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
+        Route::apiResource('/leads', LeadController::class);
+        Route::patch('/leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
         
         // Vault Operations (Uploads & Indexing)
         Route::get('/vault/documents', [VaultDocumentController::class, 'index']);

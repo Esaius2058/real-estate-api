@@ -52,9 +52,8 @@ class PropertyPolicy
     public function delete(User $user, Property $property): bool
     {
         if ($user->role === 'admin') {
-            return true;
+            return $user->agency_id === $property->agency_id;
         }
-
         return $user->id === $property->user_id;
     }
 

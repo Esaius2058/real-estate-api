@@ -9,11 +9,23 @@ use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\Property\PropertyResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Cache;
 
 class PropertyController extends Controller
 {
     public function index(): JsonResponse
+    {
+        $properties = Property::where('status', 'active')
+            ->latest()
+            ->limit(20) // Good practice to limit public payloads
+            ->get();
+
+        // If you have a custom formatting helper, map it here
+        return response()->json(['data' => $properties]);
+    }
+
+    public function agencyIndex(Request $request)
     {
         $user = auth()->user();
         $page = request()->get('page', 1);
@@ -78,15 +90,35 @@ class PropertyController extends Controller
         return response()->json(['message' => 'Updated successfully', 'data' => $property]);
     }
 
+    public function generatePublicSignedUrls(Request $request): JsonResponse
+    {
+        $request->validate([
+            'path' => 'required|string'
+        ]);
+
+        try {
+            // Assuming you are using Laravel's S3 integration
+            $url = \Illuminate\Support\Facades\Storage::disk('s3')
+                ->temporaryUrl($request->path, now()->addMinutes(60));
+
+            return response()->json(['signed_url' => $url]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to generate signed URL'], 500);
+        }
+    }
+
     public function attachImage(Request $request, Property $property): JsonResponse
     {
-        $request->validate(['url' => ['required', 'url']]);
+        $request->validate(['url' => ['required', 'string']]);
 
-        $this->authorize('update', $property);
+        \Illuminate\Support\Facades\Gate::authorize('update', $property);
 
         $image = $property->images()->create([
             's3_path' => $request->url, 
         ]);
+
+        // FIX: Nuke the stale cache for this specific property so the frontend gets the new image array
+        \Illuminate\Support\Facades\Cache::forget("property_show_{$property->id}");
 
         return response()->json([
             'success' => true,
