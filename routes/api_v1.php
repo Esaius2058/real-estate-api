@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Universal Auth & State
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
+    Route::get('/me', [AuthenticationController::class, 'me']);
 
     // Universal Payments
     Route::post('/payments/stk-push', [PaymentController::class, 'stkPush']);

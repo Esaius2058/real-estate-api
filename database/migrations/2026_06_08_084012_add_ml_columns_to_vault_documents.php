@@ -12,23 +12,44 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('secure_documents', function (Blueprint $table) {
-            // Add missing relationship and metadata columns
-            $table->unsignedBigInteger('uploaded_by')->nullable()->after('agency_id');
-            $table->text('notes')->nullable()->after('s3_private_path');
-            
-            // Add OCR columns (Notice we are correctly targeting verification_status now)
-            $table->longText('extracted_text')->nullable()->after('verification_status');
-            $table->json('ml_data')->nullable()->after('extracted_text');
-            
-            // Modify the ENUM to accommodate your React frontend options
-            DB::statement("ALTER TABLE secure_documents MODIFY COLUMN document_type ENUM('title_deed', 'national_id', 'national_id_front', 'national_id_back', 'passport', 'kra_pin', 'selfie_verification', 'proof_of_address', 'contract') NOT NULL");
+            // FIX: Target the 'type' column, not 'document_type'
+            $table->enum('type', [
+                'title_deed', 
+                'national_id', 
+                'national_id_front', 
+                'national_id_back', 
+                'passport', 
+                'kra_pin', 
+                'selfie_verification', 
+                'proof_of_address', 
+                'contract'
+            ])->change();
+
+            // Assuming this migration also adds the ML extraction data columns:
+            if (!Schema::hasColumn('secure_documents', 'extracted_text')) {
+                $table->longText('extracted_text')->nullable()->after('notes');
+            }
+            if (!Schema::hasColumn('secure_documents', 'ml_data')) {
+                $table->json('ml_data')->nullable()->after('extracted_text');
+            }
         });
     }
 
+    /**
+     * Reverse the migrations.
+     */
     public function down(): void
     {
         Schema::table('secure_documents', function (Blueprint $table) {
-            $table->dropColumn(['extracted_text', 'ml_data']);
+            // Revert 'type' back to a standard string if rolled back
+            $table->string('type')->change();
+
+            if (Schema::hasColumn('secure_documents', 'extracted_text')) {
+                $table->dropColumn('extracted_text');
+            }
+            if (Schema::hasColumn('secure_documents', 'ml_data')) {
+                $table->dropColumn('ml_data');
+            }
         });
     }
 };

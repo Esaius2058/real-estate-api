@@ -51,33 +51,35 @@ class VaultDocumentController extends Controller
             ]
         );
 
+        // FIX 1: Map array keys to the actual MySQL table columns
         $document = SecureDocument::create([
-            'agency_id'           => auth()->user()->agency_id,
-            'uploaded_by'         => auth()->id(),
-            'documentable_type'   => 'App\Models\User',
-            'documentable_id'     => $client->id,
-            'document_type'       => $validated['type'],
-            's3_private_path'     => $validated['s3_path'],
-            'notes'               => $validated['notes'] ?? null,
-            'verification_status' => 'pending_review',
+            'agency_id'         => auth()->user()->agency_id,
+            'uploaded_by'       => auth()->id(),
+            'documentable_type' => 'App\Models\User',
+            'documentable_id'   => $client->id,
+            'type'              => $validated['type'],    // Real Column: type
+            's3_path'           => $validated['s3_path'], // Real Column: s3_path
+            'notes'             => $validated['notes'] ?? null,
+            'status'            => 'pending_review',      // Real Column: status
         ]);
 
-        // OCR runs synchronously — wrapped so a failure never blocks document creation
+        // OCR runs synchronously
         try {
             $rawText = $this->ocrService->extractText($validated['temporary_url']);
 
             if ($rawText) {
                 $analysis = $this->ocrService->analyzeKycData($rawText);
+                
+                // FIX 2: Update actual column name 'status' and use 'verified' matching React state
                 $document->update([
-                    'extracted_text'      => $rawText,
-                    'ml_data'             => $analysis,
-                    'verification_status' => $analysis['requires_manual_review']
+                    'extracted_text' => $rawText,
+                    'ml_data'        => $analysis,
+                    'status'         => $analysis['requires_manual_review']
                         ? 'pending_review'
                         : 'verified',
                 ]);
             }
         } catch (\Throwable $e) {
-            // Log but never let OCR failure kill the upload response
             Log::error('OCR extraction failed for document ' . $document->id, [
                 'error'         => $e->getMessage(),
                 'temporary_url' => $validated['temporary_url'],
@@ -92,15 +94,16 @@ class VaultDocumentController extends Controller
 
     public function updateStatus(Request $request, $id): JsonResponse
     {
+        // FIX 3: Update enum validation to accept 'verified' instead of 'approved' to match React and database
         $validated = $request->validate([
-            'status' => ['required', 'in:pending_review,approved,rejected'],
+            'status' => ['required', 'in:pending_review,verified,rejected'],
         ]);
 
         $document = SecureDocument::where('agency_id', auth()->user()->agency_id)
             ->findOrFail($id);
 
-        // Fixed: column is verification_status, not status
-        $document->update(['verification_status' => $validated['status']]);
+        // FIX 4: Update 'status' column
+        $document->update(['status' => $validated['status']]);
 
         return response()->json(['data' => $this->formatDocument($document->fresh())]);
     }
@@ -122,7 +125,7 @@ class VaultDocumentController extends Controller
 
     /**
      * Normalizes DB column names to the shape the frontend expects.
-     * Prevents doc.type and doc.status from ever being undefined.
+     * Maps real DB properties to both column formats seamlessly.
      */
     private function formatDocument(SecureDocument $doc): array
     {
@@ -132,21 +135,20 @@ class VaultDocumentController extends Controller
 
         return [
             'id'                  => $doc->id,
-            'type'                => $doc->document_type ?? 'unknown',
-            'document_type'       => $doc->document_type ?? 'unknown',
-            'status'              => $doc->verification_status ?? 'pending_review',
-            'verification_status' => $doc->verification_status ?? 'pending_review',
+            // FIX 5: Extract properties from real DB columns ($doc->type, $doc->status, $doc->s3_path)
+            'type'                => $doc->type ?? 'unknown',
+            'document_type'       => $doc->type ?? 'unknown',
+            'status'              => $doc->status ?? 'pending_review',
+            'verification_status' => $doc->status ?? 'pending_review',
             'userId'              => $doc->documentable_id,
             'documentable_id'     => $doc->documentable_id,
-            's3_path'             => $doc->s3_private_path,
-            's3_private_path'     => $doc->s3_private_path, // DocumentViewer reads this for the signed URL
+            's3_path'             => $doc->s3_path,
+            's3_private_path'     => $doc->s3_path, 
             'notes'               => $doc->notes,
 
-            // Flat fields DocumentViewer reads directly
             'extracted_text'      => $doc->extracted_text,
             'ml_data'             => $mlData,
 
-            // Nested block for anything else consuming the API
             'extracted' => [
                 'text'       => $doc->extracted_text,
                 'id'         => data_get($mlData, 'extracted_id'),
