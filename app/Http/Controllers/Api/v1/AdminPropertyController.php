@@ -27,6 +27,8 @@ class AdminPropertyController extends Controller
         });
 
         return response()->json($properties);
+        // Add this to AdminPropertyController@index
+\Log::info("Admin Agency ID: " . auth()->user()->agency_id);
     }
 
     /**
@@ -74,14 +76,18 @@ public function forceDestroy($id): JsonResponse
 
     if (!$property) return response()->json(['message' => 'Not found'], 404);
 
-    // 2. TEMPORARILY COMMENT OUT ANY AUTHORIZATION
-    // $this->authorize('forceDelete', $property); 
+   
 
     \Log::info("FORCE DESTROY: Policy bypassed, proceeding with deletion.");
 
-    $property->images()->forceDelete();
+    if ($property->images) {
+        $property->images()->forceDelete();
+    }
+
+    // 2. Perform permanent deletion
     $property->forceDelete();
     
+    $this->invalidateAgencyCaches(auth()->user()->agency_id);
     return response()->json(['message' => 'Property permanently removed.']);
 }
      

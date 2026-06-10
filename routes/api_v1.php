@@ -69,11 +69,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
     
     // Admin Property Management
+    
+  Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
+ Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
+
+ Route::middleware('role:admin')->group(function () {
+
+
     Route::get('/admin/properties', [AdminPropertyController::class, 'index']);
     Route::patch('/admin/properties/{property}/status', [AdminPropertyController::class, 'updateStatus']);
-   Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
-
-    // 2. PLACE THIS SECOND: The generic route
+     
+    // Property Management (Soft Delete)
     Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
+    // Property Management (Permanent Wipe)
+    Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
+});
 });
 });
