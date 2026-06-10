@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\v1\AgencyController;
 use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\VaultDocumentController;
+use App\Http\Controllers\Api\v1\AdminPropertyController;
 
 // ── Public Routes ────────────────────────────────────────────────────────
 Route::post('/login', [AuthenticationController::class, 'login']);
@@ -60,11 +61,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── High-Clearance Routes (Admins Only) ──────────────────────────────
     Route::middleware('role:admin')->group(function () {
-        
-        // Agency Configuration
-        Route::put('/agency/{agency}', [AgencyController::class, 'update']);
+    
+    // Agency Configuration
+    Route::put('/agency/{agency}', [AgencyController::class, 'update']);
 
-        // KYC / Document Approval Queue
-        Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
-    });
+    // KYC / Document Approval Queue
+    Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
+    
+    // Admin Property Management
+    Route::get('/admin/properties', [AdminPropertyController::class, 'index']);
+    Route::patch('/admin/properties/{property}/status', [AdminPropertyController::class, 'updateStatus']);
+   Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
+
+    // 2. PLACE THIS SECOND: The generic route
+    Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
+});
 });
