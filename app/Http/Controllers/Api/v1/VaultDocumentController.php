@@ -3,79 +3,108 @@
 namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document; // Ensure you import your actual Document model
+use App\Models\SecureDocument;
 use App\Http\Requests\Document\GenerateUploadUrlRequest;
 use App\Services\Vault\SecureDocumentService;
+use App\Services\OCR\OcrService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class VaultDocumentController extends Controller
 {
-    public function __construct(private SecureDocumentService $vaultService) {}
+    public function __construct(
+        private SecureDocumentService $vaultService,
+        private OcrService $ocrService
+    ) {}
 
-    /**
-     * 1. GET /api/v1/vault/documents
-     * Fetches all secure documents for the authenticated agency's vault.
-     */
-    public function index(Request $request): JsonResponse
+    public function index(): JsonResponse
     {
-        $agencyId = auth()->user()->agency_id;
-
-        $documents = Document::where('agency_id', $agencyId)
+        $documents = SecureDocument::where('agency_id', auth()->user()->agency_id)
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn($doc) => $this->formatDocument($doc));
 
         return response()->json(['data' => $documents]);
     }
 
-    /**
-     * 2. POST /api/v1/vault/documents
-     * Persists the document metadata to the database AFTER the frontend uploads to AWS/Supabase.
-     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            's3_path' => 'required|string',
-            'type'    => 'required|string',
-            'user_id' => 'nullable|string', // The Client ID mapped from the React modal
-            'notes'   => 'nullable|string',
-            'status'  => 'required|string|in:pending_review,approved,rejected',
+            'client_name'   => ['required', 'string', 'max:255'],
+            'client_email'  => ['required', 'email'],
+            'client_phone'  => ['nullable', 'string'],
+            's3_path'       => ['required', 'string'],
+            'type'          => ['required', 'string'],
+            'temporary_url' => ['required', 'url'],
+            'notes'         => ['nullable', 'string'],
         ]);
 
-        $document = Document::create([
-            'agency_id'   => auth()->user()->agency_id,
-            'uploaded_by' => auth()->id(),
-            's3_path'     => $validated['s3_path'],
-            'type'        => $validated['type'],
-            'user_id'     => $validated['user_id'],
-            'notes'       => $validated['notes'],
-            'status'      => $validated['status'],
+        // Resolve or create the client profile
+        $client = \App\Models\User::firstOrCreate(
+            ['email' => $validated['client_email']],
+            [
+                'name'      => $validated['client_name'],
+                'phone'     => $validated['client_phone'],
+                'agency_id' => auth()->user()->agency_id,
+                'password'  => bcrypt(str()->random(16)),
+            ]
+        );
+
+        $document = SecureDocument::create([
+            'agency_id'           => auth()->user()->agency_id,
+            'uploaded_by'         => auth()->id(),
+            'documentable_type'   => 'App\Models\User',
+            'documentable_id'     => $client->id,
+            'document_type'       => $validated['type'],
+            's3_private_path'     => $validated['s3_path'],
+            'notes'               => $validated['notes'] ?? null,
+            'verification_status' => 'pending_review',
         ]);
 
-        return response()->json(['data' => $document], 201);
+        // OCR runs synchronously — wrapped so a failure never blocks document creation
+        try {
+            $rawText = $this->ocrService->extractText($validated['temporary_url']);
+
+            if ($rawText) {
+                $analysis = $this->ocrService->analyzeKycData($rawText);
+                $document->update([
+                    'extracted_text'      => $rawText,
+                    'ml_data'             => $analysis,
+                    'verification_status' => $analysis['requires_manual_review']
+                        ? 'pending_review'
+                        : 'verified',
+                ]);
+            }
+        } catch (\Throwable $e) {
+            // Log but never let OCR failure kill the upload response
+            Log::error('OCR extraction failed for document ' . $document->id, [
+                'error'         => $e->getMessage(),
+                'temporary_url' => $validated['temporary_url'],
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Document uploaded and queued for processing.',
+            'data'    => $this->formatDocument($document->fresh()),
+        ], 201);
     }
 
-    /**
-     * 3. PATCH /api/v1/vault/documents/{id}/status
-     * Admin/ML integration endpoint to approve or reject KYC documents.
-     */
     public function updateStatus(Request $request, $id): JsonResponse
     {
         $validated = $request->validate([
-            'status' => 'required|in:pending_review,approved,rejected'
+            'status' => ['required', 'in:pending_review,approved,rejected'],
         ]);
 
-        $document = Document::where('agency_id', auth()->user()->agency_id)->findOrFail($id);
-        
-        $document->update(['status' => $validated['status']]);
+        $document = SecureDocument::where('agency_id', auth()->user()->agency_id)
+            ->findOrFail($id);
 
-        return response()->json(['data' => $document]);
+        // Fixed: column is verification_status, not status
+        $document->update(['verification_status' => $validated['status']]);
+
+        return response()->json(['data' => $this->formatDocument($document->fresh())]);
     }
 
-    /**
-     * 4. POST /api/v1/vault/presigned-url
-     * Generates the temporary AWS/Supabase upload URL for the React frontend.
-     */
     public function generateUploadUrl(GenerateUploadUrlRequest $request): JsonResponse
     {
         $uploadData = $this->vaultService->generatePresignedUrl(
@@ -87,7 +116,48 @@ class VaultDocumentController extends Controller
         return response()->json([
             'upload_url' => $uploadData['url'],
             'file_path'  => $uploadData['path'],
-            'expires_in' => 300 // 5 minutes
+            'expires_in' => 300,
         ]);
+    }
+
+    /**
+     * Normalizes DB column names to the shape the frontend expects.
+     * Prevents doc.type and doc.status from ever being undefined.
+     */
+    private function formatDocument(SecureDocument $doc): array
+    {
+        $mlData = is_string($doc->ml_data)
+            ? json_decode($doc->ml_data, true)
+            : $doc->ml_data;
+
+        return [
+            'id'                  => $doc->id,
+            'type'                => $doc->document_type ?? 'unknown',
+            'document_type'       => $doc->document_type ?? 'unknown',
+            'status'              => $doc->verification_status ?? 'pending_review',
+            'verification_status' => $doc->verification_status ?? 'pending_review',
+            'userId'              => $doc->documentable_id,
+            'documentable_id'     => $doc->documentable_id,
+            's3_path'             => $doc->s3_private_path,
+            's3_private_path'     => $doc->s3_private_path, // DocumentViewer reads this for the signed URL
+            'notes'               => $doc->notes,
+
+            // Flat fields DocumentViewer reads directly
+            'extracted_text'      => $doc->extracted_text,
+            'ml_data'             => $mlData,
+
+            // Nested block for anything else consuming the API
+            'extracted' => [
+                'text'       => $doc->extracted_text,
+                'id'         => data_get($mlData, 'extracted_id'),
+                'kra_pin'    => data_get($mlData, 'extracted_kra_pin'),
+                'confidence' => data_get($mlData, 'confidence'),
+            ],
+
+            'updatedAt'  => $doc->updated_at,
+            'createdAt'  => $doc->created_at,
+            'created_at' => $doc->created_at,
+            'updated_at' => $doc->updated_at,
+        ];
     }
 }

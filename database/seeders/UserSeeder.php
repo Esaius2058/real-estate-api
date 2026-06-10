@@ -30,7 +30,7 @@ class UserSeeder extends Seeder
                 'email'     => 'john.smith@gmail.com',
                 'password'  => Hash::make('password123'),
                 'role'      => 'agent',
-                'agency_id' => 2, // He is assigned to Agency 2. If he is unassigned, this MUST be null.
+                'agency_id' => 2, 
             ]
         ];
 
