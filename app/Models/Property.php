@@ -10,11 +10,13 @@ use App\Models\User;
 use App\Models\PropertyImage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory; // <-- Add this import
+use Illuminate\Database\Eloquent\Factories\HasFactory; 
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Property extends Model
 {
-    use HasFactory, BelongsToAgency; // <-- Add HasFactory here
+    use HasFactory, BelongsToAgency; 
+    use SoftDeletes;
 
     protected $fillable = [
         'agency_id',

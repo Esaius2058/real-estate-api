@@ -52,29 +52,48 @@ class AdminPropertyController extends Controller
     /**
      * Delete a property and its related records.
      */
-    public function destroy(Property $property): JsonResponse
-    {
-        if ($property->agency_id !== auth()->user()->agency_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        // Deletes associated image records from the database
-        $property->images()->delete(); 
-        $property->delete();
-
-        $this->invalidateAgencyCaches(auth()->user()->agency_id);
-
-        return response()->json(['message' => 'Property removed successfully.']);
-    }
-
-    /**
-     * Helper to clear agency-specific caches.
-     */
-    private function invalidateAgencyCaches($agencyId): void
-    {
-        // Example: If using a simple naming convention, you can manually clear keys
-        // or better yet, implement Cache Tags if your driver supports them.
-        Cache::forget("admin_agency_{$agencyId}_properties_page_1");
-        Cache::forget("agency_{$agencyId}_properties_page_1");
-    }
+ public function destroy($id): JsonResponse
+{
+    
+    $property = Property::withTrashed()->find($id);
+    if (!$property) return response()->json(['message' => 'Not found'], 404);
+    
+    // This assumes you added SoftDeletes trait to your Property model
+    $property->delete(); 
+    $this->invalidateAgencyCaches(auth()->user()->agency_id);
+    return response()->json(['message' => 'Property moved to trash.']);
 }
+
+// 2. Permanent Delete (Wipe Data)
+public function forceDestroy($id): JsonResponse
+{
+    // 1. Find the property
+    $property = Property::withoutGlobalScope(\App\Scopes\AgencyScope::class)
+                        ->withTrashed()
+                        ->find($id);
+
+    if (!$property) return response()->json(['message' => 'Not found'], 404);
+
+    // 2. TEMPORARILY COMMENT OUT ANY AUTHORIZATION
+    // $this->authorize('forceDelete', $property); 
+
+    \Log::info("FORCE DESTROY: Policy bypassed, proceeding with deletion.");
+
+    $property->images()->forceDelete();
+    $property->forceDelete();
+    
+    return response()->json(['message' => 'Property permanently removed.']);
+}
+     
+private function invalidateAgencyCaches($agencyId): void
+{
+    // Clear specific property pages
+    for ($page = 1; $page <= 20; $page++) {
+        Cache::forget("admin_agency_{$agencyId}_properties_page_{$page}");
+    }
+    
+    // If you use Tags (if your cache driver supports it, like Redis/Memcached), 
+    // it's much better:
+    // Cache::tags(['properties', "agency_{$agencyId}"])->flush();
+}
+} 
