@@ -30,7 +30,7 @@ return new class extends Migration
         });
 
         // Modifying the ENUM is a raw SQL statement, so it sits safely outside the Blueprint closure
-        DB::statement("ALTER TABLE secure_documents MODIFY COLUMN document_type ENUM('title_deed', 'national_id', 'national_id_front', 'national_id_back', 'passport', 'kra_pin', 'selfie_verification', 'proof_of_address', 'contract') NOT NULL");
+        DB::statement("ALTER TABLE secure_documents MODIFY COLUMN type ENUM('title_deed', 'national_id', 'national_id_front', 'national_id_back', 'passport', 'kra_pin', 'selfie_verification', 'proof_of_address', 'contract') NOT NULL");
     }
 
     /**

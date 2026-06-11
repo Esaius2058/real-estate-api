@@ -7,6 +7,8 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\Agency;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -84,6 +86,42 @@ class AuthenticationController extends Controller
         ]);
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        // 1. Validate data fields
+        $validated = $request->validate([
+            'name'   => ['required', 'string', 'max:255'],
+            'email'  => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'avatar' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'], // Max 2MB
+        ]);
+
+        // 2. Process Binary Avatar File Stream if attached
+        if ($request->hasFile('avatar')) {
+            // Delete old avatar if it exists to clean disk space
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+            }
+
+            // Save file to storage/app/public/avatars
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar_path = $path;
+        }
+
+        // 3. Persist standard attributes
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile configurations synchronized successfully.',
+            'user'    => $user,
+            'avatar_url' => $user->avatar_path ? asset('storage/' . $user->avatar_path) : null
+        ], 200);
+    }
+
     /**
      * Fetch authenticatable session data on state restoration.
      */
@@ -97,6 +135,7 @@ class AuthenticationController extends Controller
                 'name'      => $user->name,
                 'role'      => $user->role,
                 'agency_id' => $user->agency_id,
+                'avatar_path' => $user->avatar_path,
             ],
             'profile' => [
                 'id'        => $user->id,
