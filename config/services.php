@@ -12,7 +12,7 @@ return [
     | location for this type of information, allowing packages to have
     | a conventional file to locate the various service credentials.
     |
-    */
+    |*/
 
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
@@ -43,6 +43,12 @@ return [
         'shortcode' => env('MPESA_SHORTCODE'),
         'initiator_name' => env('MPESA_INITIATOR_NAME'),
         'initiator_password' => env('MPESA_INITIATOR_PASSWORD'),
+    ],
+
+    // ✅ Safely tucked inside the array bounds
+    'paystack' => [
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'callback_url' => env('APP_URL', 'http://localhost:8000') . '/payment/callback',
     ],
 
 ];
