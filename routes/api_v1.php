@@ -65,7 +65,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
+
     Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
+
+    Route::post('/me', [AuthenticationController::class, 'updateProfile']);
 
 
     // Core Property Management Resources

@@ -41,9 +41,15 @@ class AgentController extends Controller
         return response()->json(['data' => $agent], 201);
     }
 
-    public function update(Request $request, User $agent): JsonResponse // Assuming Request or UpdateAgentRequest
+    public function update(\Illuminate\Http\Request $request, User $agent): JsonResponse
     {
-        $validated = $request->validated();
+        // FIX: base Request does not have ->validated(). Use inline validation instead.
+        $validated = $request->validate([
+            'name'     => ['sometimes', 'string', 'max:255'],
+            'email'    => ['sometimes', 'email', 'max:255', 'unique:users,email,' . $agent->id],
+            'password' => ['sometimes', 'string', 'min:8'],
+            'role'     => ['sometimes', 'string', 'in:admin,agent'],
+        ]);
 
         if (!empty($validated['password'])) {
             $validated['password'] = bcrypt($validated['password']);
