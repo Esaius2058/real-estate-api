@@ -17,8 +17,6 @@ class LeadKanbanController extends Controller
 
         $lead->update(['kanban_stage' => $validated['kanban_stage']]);
 
-        // Trigger events here if needed (e.g., LeadMovedToEscrow Event)
-
         return response()->json([
             'message' => 'Stage updated successfully',
             'data'    => $lead

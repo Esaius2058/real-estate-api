@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Subscription;
 
+
 class User extends Authenticatable
 {
     use HasApiTokens, Notifiable, BelongsToAgency;
@@ -32,6 +33,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Lead::class, 'agent_id');
     }
+
     
     // ✅ ADD THESE RELATIONSHIPS
     public function buyerEscrows(): HasMany
@@ -79,16 +81,18 @@ class User extends Authenticatable
     {
         return $this->role === 'broker';
     }
+
     public function subscriptions()
-{
-    return $this->morphMany(Subscription::class, 'subscribable');
+    {
+        return $this->morphMany(Subscription::class, 'subscribable');
+    }
+
+    public function activeSubscription()
+    {
+        return $this->morphOne(Subscription::class, 'subscribable')
+                    ->where('status', 'active')
+                    ->where('ends_at', '>', now())
+                    ->latest();
+    }
 }
 
-public function activeSubscription()
-{
-    return $this->morphOne(Subscription::class, 'subscribable')
-                ->where('status', 'active')
-                ->where('ends_at', '>', now())
-                ->latest();
-}
-}

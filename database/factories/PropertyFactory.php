@@ -20,9 +20,11 @@ class PropertyFactory extends Factory
     public function definition(): array
     {
         return [
+            // Safely grab an existing user ID, or generate a new user if the DB is completely empty
+            'user_id'  => \App\Models\User::first()->id ?? \App\Models\User::factory(),
             'title'    => $this->faker->streetName() . ' Property',
             'price'    => $this->faker->numberBetween(150000, 850000),
-            'location' => $this->faker->city(), // <-- This satisfies the strict 'location' requirement!
+            'location' => $this->faker->city(),
         ];
     }
 }

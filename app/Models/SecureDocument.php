@@ -1,28 +1,30 @@
 <?php
 
-declare(strict_types=1);
-
 namespace App\Models;
 
-use App\Traits\BelongsToAgency;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SecureDocument extends Model
 {
-    use BelongsToAgency;
+    use HasFactory;
 
-    protected $fillable = [
-        'agency_id', 'lead_id', 'property_id', 'document_type', 'file_path'
+    // Using $guarded is perfectly fine. It means 'extracted_text' and 'ml_data' 
+    // are automatically fillable without needing to type them out.
+    protected $guarded = ['id'];
+
+    // Tells Laravel to parse the JSON database column into a usable PHP array
+    protected $casts = [
+        'ml_data' => 'array',
     ];
 
-    public function lead(): BelongsTo
+    public function agency()
     {
-        return $this->belongsTo(Lead::class);
+        return $this->belongsTo(Agency::class);
     }
 
-    public function property(): BelongsTo
+    public function uploader()
     {
-        return $this->belongsTo(Property::class);
+        return $this->belongsTo(User::class, 'uploaded_by');
     }
 }

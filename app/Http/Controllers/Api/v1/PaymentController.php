@@ -52,22 +52,108 @@ class PaymentController extends Controller
             $escrow = \App\Models\Escrow::findOrFail($request->escrow_id);
             $user = $request->user();
 
-            // ✅ FIX: Paystack requires amounts in minor units (e.g., cents/kobo).
-            // Convert major currency units (e.g., 100.00 KES) to minor units (10000).
-            $amountInMinorUnits = intval($request->amount * 100);
+            $amountInMinorUnits = intval(round($request->amount * 100));
 
             $result = $this->paystackService->initializeTransaction(
                 $user->email,
-                $amountInMinorUnits, // Use the converted integer
+                $amountInMinorUnits,
                 ['escrow_id' => $escrow->id],
-                null // uses default callback from config
+                null
             );
 
-            // Verify both the structure and presence of the initialization URL
             if ($result && isset($result['data']['authorization_url'])) {
+                $payment = Payment::create([
+                    'escrow_id'      => $escrow->id,
+                    'user_id'        => $user->id,
+                    'amount'         => $request->amount,
+                    'reference'      => $result['data']['reference'] ?? null,
+                    'status'         => 'pending',
+                    'payment_method' => 'paystack_card',
+                ]);
+
                 return response()->json([
+                    'success'           => true,
                     'authorization_url' => $result['data']['authorization_url'],
-                    'reference'         => $result['data']['reference'],
+                    'reference'         => $result['data']['reference'] ?? null,
+                    'payment'           => $payment,
+                ], 200);
+            }
+
+            Log::error('Paystack initialization failed: invalid response', ['response' => $result]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to initialize Paystack transaction.'
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Paystack initialization exception', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process payment request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Real-time Payment Status Checker for Frontend Polling
+     * Route: GET /api/v1/payments/status/{checkoutRequestID}
+     */
+    public function checkStatus($checkoutRequestID)
+    {
+        $payment = Payment::where('checkout_request_id', $checkoutRequestID)->first();
+
+        if (!$payment) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transaction tracking identifier not found.'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => $payment->status,
+            'receipt_number' => $payment->receipt_number
+        ], 200);
+    }
+
+    /**
+     * Safaricom Webhook Callback Handler
+     * Route: POST /api/v1/payments/callback (Ensure this is public in bootstrap/app.php or VerifyCsrfToken)
+     */
+    public function callback(Request $request)
+    {
+        Log::info('Incoming M-Pesa Callback Matrix Payload Received', $request->all());
+
+        $callbackData = $request->json('Body.stkCallback');
+        $resultCode   = $callbackData['ResultCode'] ?? null;
+        $checkoutId   = $callbackData['CheckoutRequestID'] ?? null;
+
+        $payment = Payment::where('checkout_request_id', $checkoutId)->first();
+
+        if (!$payment) {
+            Log::warning('M-Pesa Callback received for untracked checkout ID: ' . $checkoutId);
+            return response()->json(['status' => 'untracked'], 404);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            if ($resultCode == 0) {
+                $callbackItems = $callbackData['CallbackMetadata']['Item'] ?? [];
+                $receiptNumber = null;
+
+                foreach ($callbackItems as $item) {
+                    if ($item['Name'] === 'MpesaReceiptNumber') {
+                        $receiptNumber = $item['Value'];
+                        break;
+                    }
+                }
+
+                $payment->update([
+                    'receipt_number' => $receiptNumber,
+                    'status'         => 'completed',
+
                 ]);
             }
 

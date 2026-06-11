@@ -5,7 +5,10 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
+use App\Models\Property;
+use App\Policies\PropertyPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,9 +25,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 1. Explicitly register the PropertyPolicy
+        Gate::policy(Property::class, PropertyPolicy::class);
+
+        // 2. Optimized Rate Limiting
         RateLimiter::for('payments', function (Request $request) {
-            // Limit users to 3 payment initiation attempts per minute based 0n ID or IP
-            return Limit::perMinute(3)->by($request->user()?->id ?: $request->ip());
+            // Using a higher limit for logged-in users (e.g., 10) vs guests (e.g., 3)
+            // helps prevent genuine agent errors from causing a lockout.
+            return $request->user() 
+                ? Limit::perMinute(10)->by($request->user()->id)
+                : Limit::perMinute(3)->by($request->ip());
         });
     }
 }

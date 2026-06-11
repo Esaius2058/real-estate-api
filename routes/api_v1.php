@@ -29,8 +29,17 @@ use App\Http\Controllers\Api\v1\PayoutController;
 // ==========================================
 
 // Authentication Access Points
+use App\Http\Controllers\Api\v1\VaultDocumentController;
+use App\Http\Controllers\Api\v1\AdminPropertyController;
+
+// ── Public Routes ────────────────────────────────────────────────────────
+
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+// Universal Read Access (Clients, Agents, Admins)
+Route::get('/properties', [PropertyController::class, 'index']);
+Route::get('/properties/{property}', [PropertyController::class, 'show']);
+Route::post('/properties/shares/sign-images', [PropertyController::class, 'generatePublicSignedUrls']);
 
 // Inbound Automated Financial Webhooks (Bypassing Sanctum Middleware)
 Route::post('/payments/callback', [PaymentController::class, 'callback']); // Safaricom Daraja STK Push Callback Engine
@@ -49,9 +58,15 @@ Route::prefix('payouts')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
 
     // Identity Profiling
+// ── Protected Ecosystem ──────────────────────────────────────────────────
+Route::middleware('auth:sanctum')->group(function () {
+    
+    // Universal Auth & State
+
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
     Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
+
 
     // Core Property Management Resources
     Route::apiResource('properties', PropertyController::class);
@@ -117,4 +132,63 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/disputes', [AdminDashboardController::class, 'disputes']); // Multi-tenant system dispute log
         Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']); // Final binding arbitration override execution
     });
+    // Universal Payments
+    Route::post('/payments/stk-push', [PaymentController::class, 'stkPush']);
+    Route::get('/payments/status/{checkoutRequestID}', [PaymentController::class, 'checkStatus']);
+
+    // Workspace Initialization (Limbo State)
+    Route::post('/vault/initialize-workspace', [AgencyController::class, 'store']);
+    Route::post('/agency/join', [AgencyController::class, 'join']);
+
+    // ── Staff Routes (Agents & Admins) ───────────────────────────────────
+    Route::middleware('role:agent,admin')->group(function () {
+        
+        Route::get('/agency', [AgencyController::class, 'show']);
+
+        Route::get('/agent/properties', [PropertyController::class, 'agencyIndex']);
+        Route::get('/agent/properties/{property}', [PropertyController::class, 'show']);
+
+        // Property Mutations
+        Route::post('/properties', [PropertyController::class, 'store']);
+        Route::put('/properties/{property}', [PropertyController::class, 'update']);
+        Route::delete('/properties/{property}', [PropertyController::class, 'destroy']);
+        Route::post('/properties/{property}/images', [PropertyController::class, 'attachImage']);
+
+        // Lead Management
+        Route::apiResource('/leads', LeadController::class);
+        Route::patch('/leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
+        
+        // Vault Operations (Uploads & Indexing)
+        Route::get('/vault/documents', [VaultDocumentController::class, 'index']);
+        Route::post('/vault/documents', [VaultDocumentController::class, 'store']);
+        Route::post('/vault/presigned-url', [VaultDocumentController::class, 'generateUploadUrl']);
+    });
+
+
+    // ── High-Clearance Routes (Admins Only) ──────────────────────────────
+    Route::middleware('role:admin')->group(function () {
+    
+    // Agency Configuration
+    Route::put('/agency/{agency}', [AgencyController::class, 'update']);
+
+    // KYC / Document Approval Queue
+    Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
+    
+    // Admin Property Management
+    
+  Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
+ Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
+
+ Route::middleware('role:admin')->group(function () {
+
+
+    Route::get('/admin/properties', [AdminPropertyController::class, 'index']);
+    Route::patch('/admin/properties/{property}/status', [AdminPropertyController::class, 'updateStatus']);
+     
+    // Property Management (Soft Delete)
+    Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
+    // Property Management (Permanent Wipe)
+    Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
+});
+});
 });

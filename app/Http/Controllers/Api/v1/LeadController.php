@@ -9,6 +9,7 @@ use App\Http\Requests\Lead\UpdateLeadRequest;
 use App\Http\Resources\Lead\LeadResource;
 use App\Services\Lead\LeadService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class LeadController extends Controller
 {
@@ -16,30 +17,70 @@ class LeadController extends Controller
 
     public function index(): JsonResponse
     {
-        // Global scope automatically filters to the auth user's agency.
-        $leads = Lead::with('assignedAgent')->latest()->paginate(20);
+        $user = auth()->user();
+        $page = request()->get('page', 1);
+
+        $cacheKey = "agency_{$user->agency_id}_user_{$user->id}_leads_page_{$page}";
+
+        $responseData = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($user) {
+            $query = Lead::with('assignedAgent')->latest();
+
+            if ($user->role === 'agent') {
+                // Ensure this matches your database column (assigned_agent_id or agent_id)
+                $query->where('agent_id', $user->id);
+            }
+
+            return LeadResource::collection($query->paginate(20))->response()->getData(true);
+        });
         
-        return LeadResource::collection($leads)->response();
+        return response()->json($responseData);
     }
 
     public function store(StoreLeadRequest $request): JsonResponse
     {
-        $lead = $this->leadService->createLead($request->validated(), auth()->id());
+        $validated = $request->validated();
+        $user = auth()->user();
 
-        return (new LeadResource($lead))
-            ->response()
-            ->setStatusCode(201);
+        // Strip and force secure ownership IDs BEFORE passing to the service
+        $validated['agency_id'] = $user->agency_id;
+        $validated['agent_id'] = $user->id; // Assign to the creator by default
+
+        $lead = $this->leadService->createLead($validated, $user->id);
+
+        Cache::forget("agency_{$user->agency_id}_user_{$user->id}_leads_page_1");
+        Cache::forget("agency_{$user->agency_id}_leads_page_1"); 
+
+        return response()->json(['data' => $lead], 201);
     }
 
     public function show(Lead $lead): JsonResponse
     {
-        return (new LeadResource($lead->load(['activities', 'documents'])))->response();
+        // FIX: Verify the user is allowed to view this specific lead
+        $this->authorize('view', $lead);
+
+        $agencyId = auth()->user()->agency_id;
+        $cacheKey = "agency_{$agencyId}_lead_{$lead->id}";
+
+        $cachedLeadData = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($lead) {
+            $lead->load(['activities', 'documents']);
+            return (new LeadResource($lead))->response()->getData(true);
+        });
+
+        return response()->json($cachedLeadData);
     }
 
     public function update(UpdateLeadRequest $request, Lead $lead): JsonResponse
     {
+        // FIX: Verify the user is allowed to update this specific lead
+        $this->authorize('update', $lead);
+
         $this->leadService->updateLead($lead, $request->validated(), auth()->id());
 
-        return (new LeadResource($lead))->response();
+        $agencyId = auth()->user()->agency_id;
+
+        Cache::forget("agency_{$agencyId}_lead_{$lead->id}");
+        Cache::forget("agency_{$agencyId}_leads_page_1");
+
+        return (new LeadResource($lead->fresh(['activities', 'documents'])))->response();
     }
 }

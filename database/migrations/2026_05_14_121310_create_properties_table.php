@@ -23,11 +23,11 @@ return new class extends Migration
             $table->text('description'); // Missing previously
             
             $table->enum('status', [
-                'active',
-                'under_contract',
-                'closed',
-                'expired'
-            ])->default('active');
+                'Active',
+                'Under Contract',
+                'Closed',
+                'Expired'
+            ])->default('Active');
             
             $table->date('contract_end_date')->nullable();
             $table->timestamps();
