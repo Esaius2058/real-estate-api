@@ -17,6 +17,7 @@ class PropertyController extends Controller
     public function index(): JsonResponse
     {
         $properties = Property::where('status', 'active')
+            ->with(['images', 'agency'])
             ->latest()
             ->limit(20) // Good practice to limit public payloads
             ->get();
