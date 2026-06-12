@@ -6,7 +6,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
+# TODO: RUN 'composer require league/flysystem-aws-s3-v3' THEN RUN 'php artisan config:clear'
 class PropertyImage extends Model
 {
     protected $fillable = [
