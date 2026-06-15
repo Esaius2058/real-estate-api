@@ -1,4 +1,8 @@
+import os
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+load_dotenv()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Makao Agent Service"
@@ -8,7 +12,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     
     # Laravel Core API Connection
-    #LARAVEL_API_URL: str = "http://localhost:8000/api/v1"
+    LARAVEL_API_URL: str
     
     # Internal Service Authentication 
     #SERVICE_API_KEY: str = "secret-dev-key"

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\v1;
 
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Controller;
 use App\Models\SecureDocument;
 use App\Http\Requests\Document\GenerateUploadUrlRequest;
@@ -40,7 +41,6 @@ class VaultDocumentController extends Controller
             'notes'         => ['nullable', 'string'],
         ]);
 
-        // Resolve or create the client profile
         $client = \App\Models\User::firstOrCreate(
             ['email' => $validated['client_email']],
             [
@@ -51,38 +51,71 @@ class VaultDocumentController extends Controller
             ]
         );
 
-        // FIX 1: Map array keys to the actual MySQL table columns
         $document = SecureDocument::create([
             'agency_id'         => auth()->user()->agency_id,
             'uploaded_by'       => auth()->id(),
             'documentable_type' => 'App\Models\User',
             'documentable_id'   => $client->id,
-            'type'              => $validated['type'],    // Real Column: type
-            's3_path'           => $validated['s3_path'], // Real Column: s3_path
+            'type'              => $validated['type'],
+            's3_path'           => $validated['s3_path'],
             'notes'             => $validated['notes'] ?? null,
-            'status'            => 'pending_review',      // Real Column: status
+            'status'            => 'pending_review',
         ]);
 
-        // OCR runs synchronously
         try {
             $rawText = $this->ocrService->extractText($validated['temporary_url']);
 
             if ($rawText) {
                 $analysis = $this->ocrService->analyzeKycData($rawText);
                 
-                // FIX 2: Update actual column name 'status' and use 'verified' matching React state
+                // Save basic OCR data first
                 $document->update([
                     'extracted_text' => $rawText,
                     'ml_data'        => $analysis,
-                    'status'         => $analysis['requires_manual_review']
-                        ? 'pending_review'
-                        : 'verified',
                 ]);
+
+                // --- CALL THE PYTHON AGENT SERVICE ---
+                $payload = [
+                    'expected_name' => $client->name,
+                    'expected_type' => $validated['type'],
+                    'ocr_text'      => $rawText
+                ];
+
+                $response = Http::withToken($request->bearerToken())
+                    ->timeout(15)
+                    ->post(config('services.agent.url', 'http://127.0.0.1:8001') . '/agents/verify', $payload);
+
+                if ($response->successful()) {
+                    $result = $response->json();
+                    
+                    $isVerified = $result['name_match'] && $result['document_type_confirmed'] && $result['confidence_score'] >= 80;
+                    
+                    $document->update([
+                        'ai_verification_status' => $isVerified ? 'ai_verified' : 'ai_flagged',
+                        'ai_confidence_score'    => $result['confidence_score'],
+                        'ai_reasoning'           => $result['reasoning']
+                    ]);
+                } else {
+                    Log::error('Agent Service Verification Failed', [
+                        'status' => $response->status(),
+                        'body'   => $response->body()
+                    ]);
+                    
+                    $document->update([
+                        'ai_verification_status' => 'ai_flagged',
+                        'ai_reasoning'           => 'System failed to reach AI verification service.'
+                    ]);
+                }
             }
         } catch (\Throwable $e) {
-            Log::error('OCR extraction failed for document ' . $document->id, [
+            Log::error('OCR or Agent processing failed for document ' . $document->id, [
                 'error'         => $e->getMessage(),
                 'temporary_url' => $validated['temporary_url'],
+            ]);
+            
+            $document->update([
+                'ai_verification_status' => 'ai_flagged',
+                'ai_reasoning'           => 'Processing exception: ' . $e->getMessage()
             ]);
         }
 
@@ -135,7 +168,6 @@ class VaultDocumentController extends Controller
 
         return [
             'id'                  => $doc->id,
-            // FIX 5: Extract properties from real DB columns ($doc->type, $doc->status, $doc->s3_path)
             'type'                => $doc->type ?? 'unknown',
             'document_type'       => $doc->type ?? 'unknown',
             'status'              => $doc->status ?? 'pending_review',
@@ -155,6 +187,10 @@ class VaultDocumentController extends Controller
                 'kra_pin'    => data_get($mlData, 'extracted_kra_pin'),
                 'confidence' => data_get($mlData, 'confidence'),
             ],
+
+            'ai_verification_status' => $doc->ai_verification_status ?? 'pending',
+            'ai_confidence_score'    => $doc->ai_confidence_score,
+            'ai_reasoning'           => $doc->ai_reasoning,
 
             'updatedAt'  => $doc->updated_at,
             'createdAt'  => $doc->created_at,

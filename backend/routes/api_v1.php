@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\v1\PropertyController;
 use App\Http\Controllers\Api\v1\AgencyController;
 use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
-use App\Http\Controllers\Api\v1\VaultController;
 use App\Http\Controllers\Api\v1\VaultDocumentController;
 use App\Http\Controllers\Api\v1\AdminPropertyController;
 
@@ -62,11 +61,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Workspace Vault (Generic Storage Context)
     Route::prefix('vault')->group(function () {
-        Route::get('/documents', [VaultController::class, 'index']);
-        Route::post('/documents', [VaultController::class, 'store']);
-        Route::patch('/documents/{id}/status', [VaultController::class, 'updateStatus']);
-        Route::delete('/documents/{id}', [VaultController::class, 'destroy']);
-        Route::post('/presigned-upload-url', [VaultController::class, 'presignedUploadUrl']);
+        Route::get('/documents', [VaultDocumentController::class, 'index']);
+        Route::post('/documents', [VaultDocumentController::class, 'store']);
+        Route::patch('/documents/{id}/status', [VaultDocumentController::class, 'updateStatus']);
+        Route::delete('/documents/{id}', [VaultDocumentController::class, 'destroy']);
+        Route::post('/presigned-upload-url', [VaultDocumentController::class, 'presignedUploadUrl']);
         Route::post('/initialize-workspace', [AgencyController::class, 'store']);
     });
 
@@ -126,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/properties', [PropertyController::class, 'store']);
         Route::put('/properties/{property}', [PropertyController::class, 'update']);
         Route::delete('/properties/{property}', [PropertyController::class, 'destroy']);
+        Route::post('/properties/marketing/generate', [PropertyController::class, 'generateMarketingCopy']);
         Route::post('/properties/{property}/images', [PropertyController::class, 'attachImage']);
 
         // Staff Lead Management Overrides

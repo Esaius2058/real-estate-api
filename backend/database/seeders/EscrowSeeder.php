@@ -57,8 +57,6 @@ class EscrowSeeder extends Seeder
         // 3. Create a mock property record to satisfy the foreign key constraint
         // (Note: If your properties table fails on a missing column like 'title' or 'price', 
         // match those specific keys to your properties migration file)
-// 3. Create a mock property record with all standard residential fields
-// 3. Create a mock property record to satisfy the foreign key constraint
         $propertyId = DB::table('properties')->insertGetId([
             'agency_id'   => $agencyId,
             'user_id'     => $admin->id,
@@ -69,7 +67,8 @@ class EscrowSeeder extends Seeder
             'bedrooms'    => 3,
             'baths'       => 2,
             'sqft'        => 2400,
-            'status'      => 'available',
+            'status'      => 'Active',
+            'description' => '',
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);

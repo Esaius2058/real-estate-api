@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.tools.laravel_client import LaravelClient
 from app.core.auth import get_current_user_token
 from app.api.verify import router as verify_router
+from app.api.market import router as marketing_router
 from app.core.config import settings
 import httpx
 
@@ -62,3 +63,5 @@ async def test_connection(token: str = Depends(get_current_user_token)):
 app.include_router(agents_router)
 
 app.include_router(verify_router)
+
+app.include_router(marketing_router)

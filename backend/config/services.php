@@ -27,4 +27,8 @@ return [
     'ocrspace' => [
         'key' => env('OCR_SPACE_API_KEY'),
     ],
+
+    'agent' => [
+        'url' => env('AGENT_SERVICE_URL'),
+    ],
 ];

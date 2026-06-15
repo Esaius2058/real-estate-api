@@ -23,11 +23,23 @@ class PropertyResource extends JsonResource
             'description'       => $this->description,
             'status'            => $this->status,
             'contract_end_date' => $this->contract_end_date,
+            
+            // Safe fallback if the column doesn't exist yet or is null
+            'amenities'         => $this->amenities ?? [], 
 
-            // Flat array of URL strings — frontend reads property.images[0] directly
-            'images' => $this->whenLoaded('images', fn() =>
-                $this->images->pluck('s3_path')->filter()->values()->toArray()
-            ),
+            // AI/Categorized Image Mapping
+            'images' => $this->whenLoaded('images', function() {
+                return [
+                    'main'     => $this->images->where('is_primary', 1)->first()?->s3_path,
+                    'interior' => array_values($this->images->where('is_primary', 0)->pluck('s3_path')->toArray()),
+                    'exterior' => [], // Included to satisfy React TypeScript interfaces
+                ];
+            }, [
+                // Fallback structure if images relation is not loaded
+                'main' => null,
+                'interior' => [],
+                'exterior' => []
+            ]),
 
             // Agent details when loaded via ->load('agent')
             'agent' => $this->whenLoaded('agent', fn() => [

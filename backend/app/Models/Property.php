@@ -29,6 +29,7 @@ class Property extends Model
         'baths',
         'sqft',
         'description',
+        'amenities',
         'status',
         'contract_end_date'
     ];
@@ -44,6 +45,10 @@ class Property extends Model
         });
     }
 
+    protected $casts = [
+        'amenities' => 'array',
+    ];
+    
     public function agent()
     {
         return $this->belongsTo(User::class, 'user_id');

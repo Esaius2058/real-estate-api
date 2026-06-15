@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Property;
+use App\Models\PropertyImage;
 use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\Property\PropertyResource;
@@ -54,17 +55,60 @@ class PropertyController extends Controller
         $validated = $request->validated();
         $user = auth()->user();
 
+        // Separate images payload so it doesn't break the Property::create() insert
+        $imagesPayload = $request->input('images', []);
+        unset($validated['images']);
+
         // Strip and force secure ownership IDs
         $validated['agency_id'] = $user->agency_id;
         $validated['user_id'] = $user->id; 
 
         $property = Property::create($validated);
 
+        // Process the categorized images payload into database rows
+        $imageRecords = [];
+
+        // Main Image (is_primary = 1)
+        if (!empty($imagesPayload['main'])) {
+            $imageRecords[] = [
+                'property_id' => $property->id,
+                's3_path'     => $imagesPayload['main'],
+                'is_primary'  => 1,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ];
+        }
+
+        // Secondary Images (is_primary = 0)
+        // We merge interior and exterior since the DB schema only uses booleans
+        $secondaryImages = array_merge(
+            $imagesPayload['interior'] ?? [],
+            $imagesPayload['exterior'] ?? []
+        );
+
+        foreach ($secondaryImages as $path) {
+            $imageRecords[] = [
+                'property_id' => $property->id,
+                's3_path'     => $path,
+                'is_primary'  => 0,
+                'created_at'  => now(),
+                'updated_at'  => now(),
+            ];
+        }
+
+        // Bulk insert images for performance
+        if (!empty($imageRecords)) {
+            PropertyImage::insert($imageRecords);
+        }
+
         // Invalidate caches
         Cache::forget("agency_{$user->agency_id}_user_{$user->id}_properties_page_1");
         Cache::forget("agency_{$user->agency_id}_properties_page_1"); 
 
-        return response()->json(['data' => $property], 201);
+        return response()->json([
+            'message' => 'Property committed successfully.',
+            'data' => $property->load('images') 
+        ], 201);
     }
 
     public function show($id): JsonResponse
@@ -126,6 +170,44 @@ class PropertyController extends Controller
             'message' => 'Image attached successfully.',
             'image'   => $image,
         ], 201);
+    }
+
+    public function generateMarketingCopy(Request $request)
+    {
+        $validated = $request->validate([
+            'property_type'   => 'required|string',
+            'location'        => 'required|string',
+            'price'           => 'required|string',
+            'bedrooms'        => 'nullable|integer',
+            'bathrooms'       => 'nullable|integer',
+            'features'        => 'array',
+            'target_audience' => 'nullable|string',
+        ]);
+
+        try {
+            // Forward the payload to the internal Python Agent Service
+            $response = Http::timeout(30)
+                ->post(config('services.agent.url', 'http://127.0.0.1:8001') . '/agents/marketing/generate', [
+                    'property_type'   => $validated['property_type'],
+                    'location'        => $validated['location'],
+                    'price'           => $validated['price'],
+                    'bedrooms'        => $validated['bedrooms'],
+                    'bathrooms'       => $validated['bathrooms'],
+                    'features'        => $validated['features'] ?? [],
+                    'target_audience' => $validated['target_audience'] ?? 'potential buyers'
+                ]);
+
+            if ($response->successful()) {
+                return response()->json($response->json());
+            }
+
+            Log::error('Marketing Agent Failed', ['response' => $response->body()]);
+            return response()->json(['message' => 'AI generation failed. Please try again.'], 500);
+            
+        } catch (\Exception $e) {
+            Log::error('Marketing Agent Exception', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Could not reach the AI service.'], 500);
+        }
     }
 
     public function destroy(Property $property): JsonResponse
