@@ -1,7 +1,10 @@
 from fastapi import FastAPI, APIRouter, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from app.tools.laravel_client import LaravelClient
 from app.core.auth import get_current_user_token
+from app.api.verify import router as verify_router
 from app.core.config import settings
+import httpx
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -31,13 +34,31 @@ async def health_check():
         "version": settings.VERSION
     }
 
-router = APIRouter(prefix="/agents")
 
-@router.post("/test-laravel-connection")
+# --- Agents Router ---
+agents_router = APIRouter(prefix="/agents")
+
+@agents_router.get("/test-laravel-connection")
 async def test_connection(token: str = Depends(get_current_user_token)):
-    # This is a sample showing how you'd use the client
-    client = LaravelClient(token=token)
-    data = await client.get("me") # Calls /api/v1/me in Laravel
-    return {"status": "authenticated", "user": data}
+    """
+    Tests the bridge between FastAPI and Laravel by making an authenticated
+    request back to the Laravel /api/v1/me endpoint.
+    """
+    try:
+        client = LaravelClient(token=token)
+        # Attempt to fetch the currently authenticated user from Laravel
+        data = await client.get("me") 
+        return {
+            "status": "success", 
+            "message": "Bridge is active. Sanctum token verified by Laravel.",
+            "laravel_response": data
+        }
+    except httpx.HTTPStatusError as e:
+        # If Laravel rejects the token (e.g., 401 Unauthorized)
+        raise HTTPException(status_code=e.response.status_code, detail=f"Laravel rejected the request: {e.response.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-app.include_router(router)
+app.include_router(agents_router)
+
+app.include_router(verify_router)
