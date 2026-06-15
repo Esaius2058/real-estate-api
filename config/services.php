@@ -27,4 +27,8 @@ return [
     'ocrspace' => [
         'key' => env('OCR_SPACE_API_KEY'),
     ],
+    'gemini' => [
+    'key' => env('GEMINI_API_KEY'),
+    'model'   => 'gemini-1.5-flash',
+],
 ];

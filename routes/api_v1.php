@@ -20,6 +20,10 @@ use App\Http\Controllers\Api\v1\EscrowController;
 use App\Http\Controllers\Api\v1\AdminDashboardController;
 use App\Http\Controllers\Api\v1\PayoutController;
 
+
+//chatbot
+use App\Http\Controllers\Api\v1\ChatController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes — Production Environment Pipeline
@@ -32,6 +36,8 @@ use App\Http\Controllers\Api\v1\PayoutController;
 
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+//chatbot
+Route::post('/chat', [ChatController::class, 'sendMessage']);
 
 // Universal Read Access (Clients, Agents, Admins)
 Route::get('/properties', [PropertyController::class, 'index']);
@@ -58,7 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
     Route::post('/me', [AuthenticationController::class, 'updateProfile']);
-    Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
+    Route::get('/dashboard/summary', [AdminDashboardController::class, 'index']);
 
     // Workspace Vault (Generic Storage Context)
     Route::prefix('vault')->group(function () {
@@ -152,5 +158,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
         Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
     });
-
+  
 });

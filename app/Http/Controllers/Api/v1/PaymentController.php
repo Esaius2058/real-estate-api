@@ -25,8 +25,6 @@ class PaymentController extends Controller
     //  M‑PESA METHODS (existing, unchanged)
     // ------------------------------------------------------------
     public function stkPush(Request $request) { /* ... existing code ... */ }
-    public function checkStatus($checkoutRequestID) { /* ... existing code ... */ }
-    public function callback(Request $request) { /* ... existing code ... */ }
     public function getUserPayments(Request $request) { /* ... existing code ... */ }
 
     // ------------------------------------------------------------
