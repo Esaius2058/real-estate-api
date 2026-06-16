@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from app.models.marketing import PropertyMarketingRequest, PropertyMarketingResponse
@@ -37,22 +37,27 @@ marketing_chain = prompt | structured_llm
 
 @router.post("/marketing/generate", response_model=PropertyMarketingResponse)
 async def generate_marketing_copy(
-    request: PropertyMarketingRequest, 
+    payload: PropertyMarketingRequest, # <--- Renamed to payload to avoid confusion
+    raw_request: Request,              # <--- Added FastAPI raw request
     token: str = Depends(get_current_user_token)
 ):
     try:
-        # Convert the features list to a comma-separated string for the prompt
-        features_str = ", ".join(request.features) if request.features else "Standard amenities"
+        features_str = ", ".join(payload.features) if payload.features else "Standard amenities"
         
         result = await marketing_chain.ainvoke({
-            "property_type": request.property_type,
-            "location": request.location,
-            "price": request.price,
-            "bedrooms": request.bedrooms or "N/A",
-            "bathrooms": request.bathrooms or "N/A",
+            "property_type": payload.property_type,
+            "location": payload.location,
+            "price": payload.price,
+            "bedrooms": payload.bedrooms or "N/A",
+            "bathrooms": payload.bathrooms or "N/A",
             "features": features_str,
-            "target_audience": request.target_audience
+            "target_audience": payload.target_audience
         })
+
+        # Now this will work:
+        print(f"Headers received: {dict(raw_request.headers)}")
+        print(f"Token: {token}")
+        
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Copywriting Agent Error: {str(e)}")
