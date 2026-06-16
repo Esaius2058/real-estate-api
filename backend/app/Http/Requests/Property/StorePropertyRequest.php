@@ -30,11 +30,12 @@ class StorePropertyRequest extends FormRequest
         'sqft'        => 'required|integer|min:0',
         'description' => 'required|string',
         'status'      => ['required', \Illuminate\Validation\Rule::in(['Active', 'Under Contract', 'Closed', 'Expired'])], 
-        // Allow the new categorized images object
         'images' => 'sometimes|array',
         'images.main' => 'nullable|string',
         'images.interior' => 'nullable|array',
         'images.exterior' => 'nullable|array',
+        'features'   => 'nullable|array',
+        'features.*' => 'string',
     ];
 }
 }

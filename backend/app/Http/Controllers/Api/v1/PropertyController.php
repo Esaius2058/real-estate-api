@@ -10,8 +10,13 @@ use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\Property\PropertyResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class PropertyController extends Controller
 {
@@ -20,10 +25,9 @@ class PropertyController extends Controller
         $properties = Property::where('status', 'active')
             ->with(['images', 'agency'])
             ->latest()
-            ->limit(20) // Good practice to limit public payloads
+            ->limit(20)
             ->get();
 
-        // If you have a custom formatting helper, map it here
         return response()->json(['data' => $properties]);
     }
 
@@ -36,10 +40,8 @@ class PropertyController extends Controller
 
         $responseData = Cache::remember($cacheKey, now()->addMinutes(30), function () use ($user) {
             
-            // FIX: Query the Property model, not Lead.
             $query = Property::with(['agent', 'images'])->latest();
 
-            // Role-based isolation
             if ($user->role === 'agent') {
                 $query->where('user_id', $user->id); 
             }
@@ -52,72 +54,96 @@ class PropertyController extends Controller
 
     public function store(StorePropertyRequest $request): JsonResponse
     {
-        $validated = $request->validated();
         $user = auth()->user();
+        $lock = Cache::lock('submit_property_user_' . $user->id, 5);
 
-        // Separate images payload so it doesn't break the Property::create() insert
-        $imagesPayload = $request->input('images', []);
-        unset($validated['images']);
-
-        // Strip and force secure ownership IDs
-        $validated['agency_id'] = $user->agency_id;
-        $validated['user_id'] = $user->id; 
-
-        $property = Property::create($validated);
-
-        // Process the categorized images payload into database rows
-        $imageRecords = [];
-
-        // Main Image (is_primary = 1)
-        if (!empty($imagesPayload['main'])) {
-            $imageRecords[] = [
-                'property_id' => $property->id,
-                's3_path'     => $imagesPayload['main'],
-                'is_primary'  => 1,
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ];
+        if (!$lock->get()) {
+            return response()->json(['message' => 'Please wait a moment before submitting again.'], 429);
         }
 
-        // Secondary Images (is_primary = 0)
-        // We merge interior and exterior since the DB schema only uses booleans
-        $secondaryImages = array_merge(
-            $imagesPayload['interior'] ?? [],
-            $imagesPayload['exterior'] ?? []
-        );
+        try {
+            $validated = $request->validated();
 
-        foreach ($secondaryImages as $path) {
-            $imageRecords[] = [
-                'property_id' => $property->id,
-                's3_path'     => $path,
-                'is_primary'  => 0,
-                'created_at'  => now(),
-                'updated_at'  => now(),
-            ];
+            if (isset($validated['features'])) {
+                $validated['amenities'] = $validated['features'];
+                unset($validated['features']);
+            }
+
+            $imagesPayload = $request->input('images', []);
+            unset($validated['images']);
+
+            $validated['agency_id'] = $user->agency_id;
+            $validated['user_id'] = $user->id; 
+
+            // Execute DB transaction to ensure atomic property and image creation
+            $property = DB::transaction(function () use ($validated, $imagesPayload) {
+                
+                $property = Property::create($validated);
+                $imageRecords = [];
+
+                $saveBase64Image = function ($base64String) {
+                    @list($type, $file_data) = explode(';', $base64String);
+                    @list(, $file_data) = explode(',', $file_data);
+                    
+                    $imageName = 'properties/' . Str::random(20) . '.png';
+                    Storage::disk('public')->put($imageName, base64_decode($file_data));
+                    
+                    return $imageName;
+                };
+
+                if (!empty($imagesPayload['main'])) {
+                    $imageRecords[] = [
+                        'property_id' => $property->id,
+                        's3_path'     => $imagesPayload['main'],
+                        'is_primary'  => 1,
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ];
+                }
+
+                $secondaryImages = array_merge(
+                    $imagesPayload['interior'] ?? [],
+                    $imagesPayload['exterior'] ?? []
+                );
+
+                foreach ($secondaryImages as $path) {
+                    $imageRecords[] = [
+                        'property_id' => $property->id,
+                        's3_path'     => $path,
+                        'is_primary'  => 0,
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ];
+                }
+
+                if (!empty($imageRecords)) {
+                    PropertyImage::insert($imageRecords);
+                }
+
+                return $property;
+            });
+
+            Cache::forget("agency_{$user->agency_id}_user_{$user->id}_properties_page_1");
+            Cache::forget("agency_{$user->agency_id}_properties_page_1"); 
+
+            return response()->json([
+                'message' => 'Property committed successfully.',
+                'data' => $property->load('images') 
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Property Submission Failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to save property. Please check server logs.'], 500);
+        } finally {
+            $lock->release();
         }
-
-        // Bulk insert images for performance
-        if (!empty($imageRecords)) {
-            PropertyImage::insert($imageRecords);
-        }
-
-        // Invalidate caches
-        Cache::forget("agency_{$user->agency_id}_user_{$user->id}_properties_page_1");
-        Cache::forget("agency_{$user->agency_id}_properties_page_1"); 
-
-        return response()->json([
-            'message' => 'Property committed successfully.',
-            'data' => $property->load('images') 
-        ], 201);
     }
 
     public function show($id): JsonResponse
     {
-        // Cache the individual property for 60 minutes
         $propertyData = Cache::remember("property_show_{$id}", now()->addMinutes(60), function () use ($id) {
             $property = Property::with(['images', 'agent'])->findOrFail($id);
             
-            // CRITICAL FIX: Resolve the Eloquent Model to a pure array BEFORE caching
             return (new PropertyResource($property))->response()->getData(true);
         });
 
@@ -142,7 +168,6 @@ class PropertyController extends Controller
         ]);
 
         try {
-            // Assuming you are using Laravel's S3 integration
             $url = \Illuminate\Support\Facades\Storage::disk('s3')
                 ->temporaryUrl($request->path, now()->addMinutes(60));
 
@@ -162,7 +187,6 @@ class PropertyController extends Controller
             's3_path' => $request->url, 
         ]);
 
-        // FIX: Nuke the stale cache for this specific property so the frontend gets the new image array
         \Illuminate\Support\Facades\Cache::forget("property_show_{$property->id}");
 
         return response()->json([
@@ -185,17 +209,17 @@ class PropertyController extends Controller
         ]);
 
         try {
-            // Forward the payload to the internal Python Agent Service
-            $response = Http::timeout(30)
-                ->post(config('services.agent.url', 'http://127.0.0.1:8001') . '/agents/marketing/generate', [
-                    'property_type'   => $validated['property_type'],
-                    'location'        => $validated['location'],
-                    'price'           => $validated['price'],
-                    'bedrooms'        => $validated['bedrooms'],
-                    'bathrooms'       => $validated['bathrooms'],
-                    'features'        => $validated['features'] ?? [],
-                    'target_audience' => $validated['target_audience'] ?? 'potential buyers'
-                ]);
+            $response = Http::timeout(60)
+            ->withToken($request->bearerToken())
+            ->post(config('services.agent.url', 'http://127.0.0.1:8001') . '/agents/marketing/generate', [
+                'property_type'   => $validated['property_type'],
+                'location'        => $validated['location'],
+                'price'           => $validated['price'],
+                'bedrooms'        => $validated['bedrooms'],
+                'bathrooms'       => $validated['bathrooms'],
+                'features'        => $validated['features'] ?? [],
+                'target_audience' => $validated['target_audience'] ?? 'potential buyers',
+            ]);
 
             if ($response->successful()) {
                 return response()->json($response->json());

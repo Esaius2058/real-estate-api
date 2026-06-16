@@ -7,10 +7,12 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\v1\AuthenticationController;
 use App\Http\Controllers\Api\v1\PropertyController;
 use App\Http\Controllers\Api\v1\AgencyController;
+use App\Http\Controllers\Api\v1\AgentController; // <--- ADDED: Agent Controller
 use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\VaultDocumentController;
 use App\Http\Controllers\Api\v1\AdminPropertyController;
+use App\Http\Controllers\Api\v1\PasswordController;
 
 // Financial Engine Imports
 use App\Http\Controllers\Api\v1\PaymentController;
@@ -25,17 +27,21 @@ use App\Http\Controllers\Api\v1\PayoutController;
 |--------------------------------------------------------------------------
 */
 
-// =========================================================================
-// 1. PUBLIC GATEWAY CHANNELS (No Authentication Required)
-// =========================================================================
+// PUBLIC GATEWAY CHANNELS (No Authentication Required)
 
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+
+// Public Password Recovery Flows
+Route::post('/password/forgot', [PasswordController::class, 'sendResetCode']); 
+Route::post('/password/reset', [PasswordController::class, 'resetPassword']);
 
 // Universal Read Access (Clients, Agents, Admins)
 Route::get('/properties', [PropertyController::class, 'index']);
 Route::get('/properties/{property}', [PropertyController::class, 'show']);
 Route::post('/properties/shares/sign-images', [PropertyController::class, 'generatePublicSignedUrls']);
+
+Route::apiResource('/leads', LeadController::class)->only(['store']); // Keep store public for checkout
 
 // Inbound Automated Financial Webhooks 
 Route::post('/payments/callback', [PaymentController::class, 'callback']); // Safaricom Daraja STK Push Callback Engine
@@ -48,16 +54,18 @@ Route::prefix('payouts')->group(function () {
 });
 
 
-// =========================================================================
-// 2. PROTECTED SYSTEM WORKSPACE LAYERS (Sanctum Guarded)
-// =========================================================================
+// PROTECTED SYSTEM WORKSPACE LAYERS (Sanctum Guarded)
 Route::middleware('auth:sanctum')->group(function () {
 
     // Universal Auth & State Profiling
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
     Route::post('/me', [AuthenticationController::class, 'updateProfile']);
+    Route::post('/password/update', [PasswordController::class, 'update']);
     Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
+    
+    // Internal Lead Reads (Agents/Admins)
+    Route::apiResource('/leads', LeadController::class)->except(['store']);
 
     // Workspace Vault (Generic Storage Context)
     Route::prefix('vault')->group(function () {
@@ -111,9 +119,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']); 
     });
 
-    // =========================================================================
-    // 3. STAFF & ELEVATED ROLE CONTROLS (Role Middleware Guarded)
-    // =========================================================================
+    // STAFF & ELEVATED ROLE CONTROLS (Role Middleware Guarded)
 
     // ── Staff Routes (Shared Agents & Admins Clearance) ──────────────────────
     Route::middleware('role:agent,admin')->group(function () {
@@ -129,7 +135,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/properties/{property}/images', [PropertyController::class, 'attachImage']);
 
         // Staff Lead Management Overrides
-        Route::apiResource('/leads', LeadController::class);
         Route::patch('/leads/{lead}/kanban', [LeadKanbanController::class, 'update']);
         
         // Secure Vault Document Operations (OCR Context)
@@ -142,6 +147,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         // Core Agency Configurations
         Route::put('/agency/{agency}', [AgencyController::class, 'update']);
+        
+        // Agent Resource Management (Admins only)
+        Route::apiResource('/agents', AgentController::class)->except(['create', 'edit', 'show']);
 
         // KYC / Secure Document Approval Queue
         Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
