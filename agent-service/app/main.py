@@ -1,11 +1,14 @@
-from fastapi import FastAPI, APIRouter, Depends
+from fastapi import FastAPI, APIRouter, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app.tools.laravel_client import LaravelClient
 from app.core.auth import get_current_user_token
 from app.api.verify import router as verify_router
 from app.api.market import router as marketing_router
 from app.core.config import settings
+from app.graphs.matching.graph import matching_app
 import httpx
+from pydantic import BaseModel
+from typing import Dict, Any
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -58,6 +61,43 @@ async def test_connection(token: str = Depends(get_current_user_token)):
         # If Laravel rejects the token (e.g., 401 Unauthorized)
         raise HTTPException(status_code=e.response.status_code, detail=f"Laravel rejected the request: {e.response.text}")
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Define the expected payload from Laravel's DispatchPropertyMatch job
+class MatchRequest(BaseModel):
+    property_data: Dict[str, Any]
+    agency_id: int
+
+@agents_router.post("/match")
+async def run_property_match(payload: MatchRequest):
+    print(f"Received match request for Property ID: {payload.property_data.get('id')}")
+    
+    # Initialize the LangGraph state
+    initial_state = {
+        "property_data": payload.property_data,
+        "agency_id": payload.agency_id,
+        "leads": [],
+        "matches": [],
+        "notifications_created": False,
+        "errors": []
+    }
+
+    try:
+        # Execute the graph asynchronously
+        result = await matching_app.ainvoke(initial_state)
+        
+        # Check for any errors pushed to the state array during execution
+        if result.get("errors"):
+            print(f"Graph executed with errors: {result['errors']}")
+            
+        return {
+            "status": "success" if result.get("notifications_created") else "completed",
+            "matches_found": len(result.get("matches", [])),
+            "errors": result.get("errors", [])
+        }
+        
+    except Exception as e:
+        print(f"Critical Graph Failure: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 app.include_router(agents_router)

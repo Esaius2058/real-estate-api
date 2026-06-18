@@ -1,0 +1,58 @@
+[90m= [39m[34;4mIlluminate\Database\Eloquent\Collection[39;24m {#8951
+    [34mall[39m: [
+      [34;4mApp\Models\Lead[39;24m {#8881
+        [34mid[39m: [35m1[39m,
+        [34mname[39m: [32m"[39m[32mJohn Smith[39m[32m"[39m,
+        [34magency_id[39m: [35m2[39m,
+        [34mkanban_stage[39m: [32m"[39m[32moffer[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8879
+        [34mid[39m: [35m2[39m,
+        [34mname[39m: [32m"[39m[32mJane Doe[39m[32m"[39m,
+        [34magency_id[39m: [35m2[39m,
+        [34mkanban_stage[39m: [32m"[39m[32mshowing[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8473
+        [34mid[39m: [35m3[39m,
+        [34mname[39m: [32m"[39m[32mTerrence Thornton[39m[32m"[39m,
+        [34magency_id[39m: [35m2[39m,
+        [34mkanban_stage[39m: [32m"[39m[32mnew[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8860
+        [34mid[39m: [35m4[39m,
+        [34mname[39m: [32m"[39m[32mVince Staples[39m[32m"[39m,
+        [34magency_id[39m: [35m2[39m,
+        [34mkanban_stage[39m: [32m"[39m[32mnew[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8892
+        [34mid[39m: [35m5[39m,
+        [34mname[39m: [32m"[39m[32mJanet Omanje[39m[32m"[39m,
+        [34magency_id[39m: [35m2[39m,
+        [34mkanban_stage[39m: [32m"[39m[32mnew[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8502
+        [34mid[39m: [35m6[39m,
+        [34mname[39m: [32m"[39m[32mBruce Wayne[39m[32m"[39m,
+        [34magency_id[39m: [35m1[39m,
+        [34mkanban_stage[39m: [32m"[39m[32moffer[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8421
+        [34mid[39m: [35m7[39m,
+        [34mname[39m: [32m"[39m[32mBruce Wayne[39m[32m"[39m,
+        [34magency_id[39m: [35m1[39m,
+        [34mkanban_stage[39m: [32m"[39m[32moffer[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8575
+        [34mid[39m: [35m8[39m,
+        [34mname[39m: [32m"[39m[32mBruce Wayne[39m[32m"[39m,
+        [34magency_id[39m: [35m1[39m,
+        [34mkanban_stage[39m: [32m"[39m[32moffer[39m[32m"[39m,
+      },
+      [34;4mApp\Models\Lead[39;24m {#8576
+        [34mid[39m: [35m9[39m,
+        [34mname[39m: [32m"[39m[32mBruce Wayne[39m[32m"[39m,
+        [34magency_id[39m: [35m1[39m,
+        [34mkanban_stage[39m: [32m"[39m[32mnew[39m[32m"[39m,
+      },
+    ],
+  }
