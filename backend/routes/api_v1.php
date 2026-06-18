@@ -20,12 +20,7 @@ use App\Http\Controllers\Api\v1\SubscriptionController;
 use App\Http\Controllers\Api\v1\EscrowController;
 use App\Http\Controllers\Api\v1\AdminDashboardController;
 use App\Http\Controllers\Api\v1\PayoutController;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes — Production Environment Pipeline
-|--------------------------------------------------------------------------
-*/
+use App\Http\Middleware\VerifyM2MToken;
 
 // PUBLIC GATEWAY CHANNELS (No Authentication Required)
 
@@ -61,6 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
     Route::post('/me', [AuthenticationController::class, 'updateProfile']);
+    Route::get('/me/notifications', [AlertController::class, 'index']);
+    Route::post('/me/notifications/read', [AlertController::class, 'markAsRead']);
     Route::post('/password/update', [PasswordController::class, 'update']);
     Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
     
@@ -162,3 +159,17 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
 });
+
+Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::class)->group(function () {
+        Route::get('/agencies/{agencyId}/leads', function ($agencyId) {
+            $leads = \App\Models\Lead::withoutGlobalScopes()
+                                    ->where('agency_id', $agencyId)
+                                    ->where('kanban_stage', 'new')
+                                    ->get();
+            return response()->json(['data' => $leads]);
+        });
+
+        Route::post('/alerts/property-matches', [
+            \App\Http\Controllers\Api\v1\AlertController::class, 'storePropertyMatches'
+        ]);
+    });

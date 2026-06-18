@@ -21,7 +21,8 @@ class Lead extends Model
         'email',
         'phone',
         'value',
-        'kanban_stage'
+        'kanban_stage',
+        'lead_requirements',
     ];
 
     public function assignedAgent(): BelongsTo

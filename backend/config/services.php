@@ -29,6 +29,7 @@ return [
     ],
 
     'agent' => [
+        'token' => env('AGENT_SERVICE_TOKEN'),
         'url' => env('AGENT_SERVICE_URL'),
     ],
 ];

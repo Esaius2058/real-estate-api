@@ -13,3 +13,12 @@ Artisan::command('inspire', function () {
 Schedule::command('model:prune', [
     '--model' => [trim(PersonalAccessToken::class, '\\')],
 ])->daily();
+
+Schedule::call(function () {
+    // Find properties created or updated in the last hour
+    $properties = Property::where('updated_at', '>=', now()->subHour())->get();
+    
+    foreach ($properties as $property) {
+        DispatchPropertyMatch::dispatch($property);
+    }
+})->hourly();
