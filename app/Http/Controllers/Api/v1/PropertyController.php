@@ -137,4 +137,56 @@ class PropertyController extends Controller
 
         return response()->json(['message' => 'Property deleted.'], 200);
     }
+    /**
+ * Unified Admin Index for Staff/Admins
+ */
+public function adminIndex(Request $request): JsonResponse
+{
+    $user = auth()->user();
+    $page = $request->get('page', 1);
+
+    // Start with the base query
+    $query = Property::with(['agent', 'images'])->latest();
+
+    // IF ADMIN: Remove the Global Scope so you can see EVERYTHING
+    if ($user->role === 'admin') {
+        $query = $query->withoutGlobalScope(\App\Scopes\AgencyScope::class);
+    } 
+    // IF AGENT: Keep the scope active (it's applied automatically, so we just filter)
+    else {
+        $query->where('agency_id', $user->agency_id);
+    }
+
+    $cacheKey = $user->role === 'admin' 
+        ? "admin_all_properties_page_{$page}" 
+        : "admin_agency_{$user->agency_id}_properties_page_{$page}";
+
+    $responseData = Cache::remember($cacheKey, now()->addMinutes(15), function () use ($query) {
+        return PropertyResource::collection($query->paginate(20))->response()->getData(true);
+    });
+
+    return response()->json($responseData);
+}
+/**
+ * Unified Status Update
+ */
+public function updateStatus(Request $request, Property $property): JsonResponse
+{
+    $request->validate(['status' => 'required|string']);
+    $user = auth()->user();
+    
+    // ALLOW if Admin OR if they belong to the same agency
+    if ($user->role !== 'admin' && $property->agency_id !== $user->agency_id) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    $property->update(['status' => $request->status]);
+    
+    // Clear relevant caches
+    Cache::forget("admin_agency_{$property->agency_id}_properties_page_1");
+    Cache::forget("admin_all_properties_page_1"); // Add this to flush the Admin global cache
+    Cache::forget("agency_{$property->agency_id}_user_{$property->user_id}_properties_page_1");
+    
+    return response()->json(['message' => 'Property status updated successfully.']);
+}
 }

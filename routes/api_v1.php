@@ -11,7 +11,7 @@ use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\VaultController;
 use App\Http\Controllers\Api\v1\VaultDocumentController;
-use App\Http\Controllers\Api\v1\AdminPropertyController;
+
 
 // Financial Engine Imports
 use App\Http\Controllers\Api\v1\PaymentController;
@@ -153,10 +153,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
         
         // Admin Property Controls (Listing Verification & Purges)
-        Route::get('/admin/properties', [AdminPropertyController::class, 'index']);
-        Route::patch('/admin/properties/{property}/status', [AdminPropertyController::class, 'updateStatus']);
-        Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
-        Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
+      Route::get('/admin/properties', [PropertyController::class, 'adminIndex']);
+    Route::patch('/admin/properties/{property}/status', [PropertyController::class, 'updateStatus']);
+    Route::delete('/admin/properties/{property}', [PropertyController::class, 'destroy']);
     });
   
 });
