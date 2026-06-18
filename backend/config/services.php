@@ -31,4 +31,8 @@ return [
     'agent' => [
         'url' => env('AGENT_SERVICE_URL'),
     ],
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'model'   => 'gemini-1.5-flash',
+    ],
 ];

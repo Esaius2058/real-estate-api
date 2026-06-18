@@ -21,6 +21,10 @@ use App\Http\Controllers\Api\v1\EscrowController;
 use App\Http\Controllers\Api\v1\AdminDashboardController;
 use App\Http\Controllers\Api\v1\PayoutController;
 
+
+//chatbot
+use App\Http\Controllers\Api\v1\ChatController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes — Production Environment Pipeline
@@ -31,6 +35,8 @@ use App\Http\Controllers\Api\v1\PayoutController;
 
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+//chatbot
+Route::post('/chat', [ChatController::class, 'sendMessage']);
 
 // Public Password Recovery Flows
 Route::post('/password/forgot', [PasswordController::class, 'sendResetCode']); 
@@ -66,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Internal Lead Reads (Agents/Admins)
     Route::apiResource('/leads', LeadController::class)->except(['store']);
+    Route::get('/dashboard/summary', [AdminDashboardController::class, 'index']);
 
     // Workspace Vault (Generic Storage Context)
     Route::prefix('vault')->group(function () {
@@ -160,5 +167,5 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
         Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
     });
-
+  
 });
