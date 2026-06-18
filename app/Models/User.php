@@ -18,7 +18,7 @@ class User extends Authenticatable
     use HasApiTokens, Notifiable, BelongsToAgency;
 
     protected $fillable = [
-        'agency_id', 'name', 'email', 'password', 'role', 'avatar_path',
+        'agency_id', 'name', 'email', 'password', 'role', 'avatar_path', 'status', 'last_active_at'
     ];
 
     protected $hidden = [
@@ -26,7 +26,9 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
-        'email_verified_at' => 'datetime',
+    'email_verified_at' => 'datetime',
+    'last_active_at' => 'datetime',
+    'created_at' => 'datetime',
     ];
 
     public function assignedLeads(): HasMany

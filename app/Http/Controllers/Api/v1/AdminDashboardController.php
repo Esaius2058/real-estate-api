@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use App\Services\PaystackService;
+use App\Models\User;
+use App\Scopes\AgencyScope;
 
 class AdminDashboardController extends Controller
 {
@@ -19,7 +22,7 @@ class AdminDashboardController extends Controller
     /**
      * Map controller runtime onto the primary system payment infrastructure driver.
      */
-    public function __construct($paystack)
+    public function __construct(PaystackService $paystack)
     {
         $this->paystack = $paystack;
     }
@@ -60,7 +63,19 @@ class AdminDashboardController extends Controller
     {
         return response()->json(EscrowDispute::with(['escrow.buyer', 'escrow.seller', 'raisedBy'])->latest()->paginate(15));
     }
+public function getUsers()
+{
+    // Use the class name to disable the specific scope
+    $users = User::withoutGlobalScope(AgencyScope::class) 
+        ->select([
+            'id', 'name', 'email', 'role', 'status', 
+            'created_at as addDate', 
+            'last_active_at as lastActive'
+        ])
+        ->get();
 
+    return response()->json($users);
+}
     public function resolveDispute(Request $request, $id)
     {
         $data = $request->validate([

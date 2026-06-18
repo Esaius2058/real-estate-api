@@ -17,7 +17,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton('PaystackService', function ($app) {
+        return new \App\Services\PaystackService(config('services.paystack.secret'));
+     });
     }
 
     /**

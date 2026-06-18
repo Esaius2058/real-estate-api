@@ -152,10 +152,12 @@ Route::middleware('auth:sanctum')->group(function () {
         // KYC / Secure Document Approval Queue
         Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
         
+        //ROUTES FOR FETCHING USERS BY ADMIN
+        Route::get('/admin/users', [AdminDashboardController::class, 'getUsers']);
         // Admin Property Controls (Listing Verification & Purges)
-      Route::get('/admin/properties', [PropertyController::class, 'adminIndex']);
-    Route::patch('/admin/properties/{property}/status', [PropertyController::class, 'updateStatus']);
-    Route::delete('/admin/properties/{property}', [PropertyController::class, 'destroy']);
+       Route::get('/admin/properties', [PropertyController::class, 'adminIndex']);
+       Route::patch('/admin/properties/{property}/status', [PropertyController::class, 'updateStatus']);
+       Route::delete('/admin/properties/{property}', [PropertyController::class, 'destroy']);
     });
   
 });
