@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\VaultController;
 use App\Http\Controllers\Api\v1\VaultDocumentController;
+use App\Http\Controllers\Api\v1\UserController;
 
 
 // Financial Engine Imports
@@ -23,6 +24,11 @@ use App\Http\Controllers\Api\v1\PayoutController;
 
 //chatbot
 use App\Http\Controllers\Api\v1\ChatController;
+
+//Activity logging
+use App\Http\Controllers\Api\v1\LogController;
+use App\Http\Controllers\Api\v1\SessionController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -154,6 +160,17 @@ Route::middleware('auth:sanctum')->group(function () {
         
         //ROUTES FOR FETCHING USERS BY ADMIN
         Route::get('/admin/users', [AdminDashboardController::class, 'getUsers']);
+
+        // Activity Logging & Session Oversight
+        Route::get('/admin/logs', [LogController::class, 'index']);
+        Route::get('/admin/sessions', [SessionController::class, 'index']);
+        
+        // User Access Control (Enable / Disable)
+        Route::patch('/admin/users/{id}/access', [UserController::class, 'updateAccess']);
+        
+        //Adding a new user into the system,only admin can do this
+        Route::post('/admin/users', [UserController::class, 'store']);
+
         // Admin Property Controls (Listing Verification & Purges)
        Route::get('/admin/properties', [PropertyController::class, 'adminIndex']);
        Route::patch('/admin/properties/{property}/status', [PropertyController::class, 'updateStatus']);
