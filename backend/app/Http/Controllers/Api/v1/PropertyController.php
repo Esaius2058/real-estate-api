@@ -315,13 +315,55 @@ class PropertyController extends Controller
         }
     }
 
-    public function destroy(Property $property): JsonResponse
+    public function destroy(\App\Models\Property $property)
     {
-        $this->authorize('delete', $property);
+        try {
+            $property = \App\Models\Property::withoutGlobalScopes()->find($id);
 
-        $property->images()->delete(); 
-        $property->delete();
+            if (!$property) {
+                return response()->json(['message' => 'Property not found in database'], 404);
+            }
 
-        return response()->json(['message' => 'Property deleted.'], 200);
+            // Ensure the current agent actually owns this property
+            if ($property->agency_id !== auth()->user()->agency_id) {
+               return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            $images = $property->images ?? [];
+
+            // 1. Delete Supabase Images to free up storage
+            $pathsToDelete = [];
+            
+            if (!empty($images['main'])) {
+                $pathsToDelete[] = $images['main'];
+            }
+            if (!empty($images['interior']) && is_array($images['interior'])) {
+                $pathsToDelete = array_merge($pathsToDelete, $images['interior']);
+            }
+            if (!empty($images['exterior']) && is_array($images['exterior'])) {
+                $pathsToDelete = array_merge($pathsToDelete, $images['exterior']);
+            }
+
+            if (!empty($pathsToDelete)) {
+                // Ensure your config/filesystems.php is configured for Supabase/S3
+                // This deletes the files directly from the bucket
+                foreach ($pathsToDelete as $path) {
+                    try {
+                        Storage::disk('s3')->delete($path);
+                    } catch (\Exception $e) {
+                        Log::warning("Failed to delete Supabase image during property deletion: " . $path);
+                    }
+                }
+            }
+
+            // 2. Delete the database record
+            $property->delete();
+
+            return response()->json(['message' => 'Property securely deleted'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Property Deletion Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to delete property'], 500);
+        }
     }
-}
+}    

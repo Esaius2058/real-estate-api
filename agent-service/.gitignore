@@ -4,6 +4,8 @@ venv/
 env/
 venv/
 
+*node_modules 
+
 # Compiled Python files
 __pycache__/
 *.py[cod]
