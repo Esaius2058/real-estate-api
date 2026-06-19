@@ -158,6 +158,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
     });
 
+    Route::post('/matches/draft', [App\Http\Controllers\Api\v1\AlertController::class, 'draftProposal']);
+
+    Route::post('/properties/predict-roi', [App\Http\Controllers\Api\v1\AlertController::class, 'predictROI']);
+
+    Route::get('/properties/comps', [App\Http\Controllers\Api\v1\PropertyController::class, 'getComps']);
+    Route::post('/properties/predict-roi', [App\Http\Controllers\Api\v1\PropertyController::class, 'predictROI']);
+
 });
 
 Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::class)->group(function () {
@@ -168,6 +175,22 @@ Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::cl
                                     ->get();
             return response()->json(['data' => $leads]);
         });
+
+        Route::get('/agencies/{agencyId}/properties', function ($agencyId) {
+            $properties = \App\Models\Property::withoutGlobalScopes()
+                                    ->where('agency_id', $agencyId)
+                                    ->whereIn('status', ['active', 'active_listing'])
+                                    ->get();
+            return response()->json(['data' => $properties]);
+        });
+
+        Route::get('/agencies/{agencyId}/properties', function ($agencyId) {
+        $properties = \App\Models\Property::withoutGlobalScopes()
+                                ->where('agency_id', $agencyId)
+                                ->whereIn('status', ['active', 'active_listing'])
+                                ->get();
+        return response()->json(['data' => $properties]);
+    });
 
         Route::post('/alerts/property-matches', [
             \App\Http\Controllers\Api\v1\AlertController::class, 'storePropertyMatches'

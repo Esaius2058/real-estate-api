@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use App\Models\Property;
 use App\Models\Lead;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 
 class AlertController extends Controller
 {
@@ -73,5 +74,47 @@ class AlertController extends Controller
             Log::error('Failed to process property matches: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Internal Server Error'], 500);
         }
+    }
+
+    public function draftProposal(Request $request)
+    {
+        $validated = $request->validate([
+            'lead_name' => 'required|string',
+            'property_title' => 'required|string',
+            'location' => 'required|string',
+            'price' => 'required',
+            'reasoning' => 'required|string',
+        ]);
+
+        $agentUrl = env('AGENT_SERVICE_URL', 'http://127.0.0.1:8001'); 
+        
+        // Proxy the request to the Python Agent Service
+        $response = Http::post(str_replace($agentUrl).'/agents/draft', $validated);
+
+        if ($response->failed()) {
+            return response()->json(['message' => 'AI Service unavailable'], 500);
+        }
+
+        return response()->json(['proposal' => $response->json('proposal')]);
+    }
+
+    public function predictROI(Request $request)
+    {
+        $validated = $request->validate([
+            'property_title' => 'required|string',
+            'location' => 'required|string',
+            'price' => 'required|numeric',
+            'property_type' => 'required|string',
+        ]);
+
+        $agentUrl = env('AGENT_SERVICE_URL', 'http://127.0.0.1:8001'); 
+        
+        $response = Http::post($agentUrl . '/agents/predict-roi', $validated);
+
+        if ($response->failed()) {
+            return response()->json(['message' => 'Analysis Service unavailable'], 500);
+        }
+
+        return response()->json($response->json());
     }
 }

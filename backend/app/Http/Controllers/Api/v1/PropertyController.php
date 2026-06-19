@@ -234,6 +234,87 @@ class PropertyController extends Controller
         }
     }
 
+    public function getComps(Request $request)
+    {
+        $location = $request->query('location');
+        $type = $request->query('type', 'Apartment');
+        $price = $request->query('price');
+        $excludeId = $request->query('exclude_id');
+
+        // Find properties in same location, same type, within +/- 25% price range
+        $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
+            ->where('type', $type)
+            ->when($excludeId, function($query, $excludeId) {
+                return $query->where('id', '!=', $excludeId);
+            })
+            ->whereBetween('price', [$price * 0.75, $price * 1.25])
+            ->whereIn('status', ['active', 'sold'])
+            ->limit(5)
+            ->get(['id', 'title', 'price', 'status', 'bedrooms', 'baths']);
+
+        return response()->json(['data' => $comps]);
+    }
+
+    public function predictROI(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'property_id' => 'required|integer|exists:properties,id',
+                'property_title' => 'required|string',
+                'location' => 'required|string',
+                'price' => 'required|numeric',
+                'property_type' => 'required|string',
+                'force_refresh' => 'boolean', // NEW: Allows UI to bypass cache
+            ]);
+
+            $property = \App\Models\Property::find($validated['property_id']);
+            $forceRefresh = $request->boolean('force_refresh', false);
+
+            // 1. CACHE CHECK: If it exists and we aren't forcing a refresh, return it instantly
+            if (!$forceRefresh && !empty($property->roi_forecast)) {
+                return response()->json($property->roi_forecast);
+            }
+
+            // 2. Fetch Comps for Python
+            $location = $validated['location'];
+            $type = $validated['property_type'];
+            $price = $validated['price'];
+
+            $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
+                ->where('type', $type)
+                ->where('id', '!=', $property->id)
+                ->whereBetween('price', [$price * 0.75, $price * 1.25])
+                ->whereIn('status', ['active', 'sold'])
+                ->limit(5)
+                ->get(['id', 'title', 'price', 'status', 'bedrooms', 'baths'])
+                ->toArray();
+
+            $payload = $validated;
+            $payload['comparable_listings'] = $comps;
+
+            $agentUrl = env('AGENT_SERVICE_URL', 'http://127.0.0.1:8001');
+            Log::info("Sending AI request to: " . $agentUrl . '/agents/roi-forecast');
+
+            $response = Http::timeout(60)->post($agentUrl . '/agents/roi-forecast', $payload);
+
+            if ($response->failed()) {
+                Log::error('AI Service Error: ' . $response->body());
+                return response()->json(['message' => 'Analysis Service unavailable', 'error' => $response->body()], 500);
+            }
+
+            $forecastData = $response->json();
+
+            // 3. SAVE TO DB: Cache the successful forecast on the property
+            $property->update(['roi_forecast' => $forecastData]);
+
+            return response()->json($forecastData);
+
+        } catch (\Exception $e) {
+            Log::error('ROI System Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Internal server error', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function destroy(Property $property): JsonResponse
     {
         $this->authorize('delete', $property);
