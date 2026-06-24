@@ -17,11 +17,12 @@ use Exception;
 class EscrowController extends Controller
 {
     protected PaystackService $paystack;
-
+    protected $activity;
     // Inject your restored Paystack driver into the core controller architecture
-    public function __construct(PaystackService $paystack)
+    public function __construct(PaystackService $paystack, ActivityService $activity)
     {
         $this->paystack = $paystack;
+        $this->activity = $activity;
     }
 
     public function index(Request $request)
@@ -238,6 +239,10 @@ class EscrowController extends Controller
                 if ($totalMilestonesCount === $approvedMilestonesCount && $escrow->is_fully_funded) {
                     $escrow->update(['status' => 'completed']);
                 }
+                $this->activity->log(
+                    auth()->id(),
+                    "Milestone approved and payout processed for escrow: {$escrow->id}"
+                );
 
                 return response()->json(['success' => true, 'milestone' => $milestone, 'escrow_status' => $escrow->status]);
             });
@@ -283,6 +288,11 @@ class EscrowController extends Controller
                     'payload_snapshot' => json_encode(['triggered_by' => $user->id, 'dispute_id' => $dispute->id]),
                     'created_at' => now()
                 ]);
+
+                $this->activity->log(
+                    auth()->id(),
+                    "Dispute raised for escrow: {$escrow->id}"
+                );
 
                 return response()->json($dispute, 201);
             });

@@ -15,6 +15,11 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
+    protected $listen = [
+    \Illuminate\Auth\Events\Login::class => [
+        \App\Listeners\LogSuccessfulLogin::class,
+    ],
+];
     public function register(): void
     {
         $this->app->singleton('PaystackService', function ($app) {

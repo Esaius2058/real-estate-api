@@ -163,7 +163,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Activity Logging & Session Oversight
         Route::get('/admin/logs', [LogController::class, 'index']);
-        Route::get('/admin/sessions', [SessionController::class, 'index']);
+      
         
         // User Access Control (Enable / Disable)
         Route::patch('/admin/users/{id}/access', [UserController::class, 'updateAccess']);

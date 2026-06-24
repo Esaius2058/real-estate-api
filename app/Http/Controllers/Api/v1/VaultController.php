@@ -9,9 +9,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Services\ActivityLog\ActivityService;
 
 class VaultController extends Controller
 {
+
+protected $activity;
+
+    // 2. ADDED CONSTRUCTOR
+    public function __construct(ActivityService $activity)
+    {
+        $this->activity = $activity;
+    }
     // GET /api/v1/vault/documents
     public function index(Request $request)
     {
@@ -67,6 +76,12 @@ class VaultController extends Controller
             'status'    => 'pending', 
         ]);
 
+        // Log the action
+        $this->activity->log(
+            auth()->id(), 
+            "Created new vault document: {$document->type}"
+        );
+
         return new VaultDocumentResource($document);
     }
 
@@ -81,6 +96,12 @@ class VaultController extends Controller
         $document->update([
             'status' => $validated['status']
         ]);
+
+        // Log the action
+        $this->activity->log(
+            auth()->id(), 
+            "Updated status for vault document: {$document->type} (ID: {$id})"
+        );
 
         return new VaultDocumentResource($document);
     }
