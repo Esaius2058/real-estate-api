@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\v1;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\Controller;
 use App\Models\SecureDocument;
+use Illuminate\Support\Facades\Gate;
 use App\Http\Requests\Document\GenerateUploadUrlRequest;
 use App\Services\Vault\SecureDocumentService;
 use App\Services\OCR\OcrService;
@@ -127,13 +128,15 @@ class VaultDocumentController extends Controller
 
     public function updateStatus(Request $request, $id): JsonResponse
     {
+        $document = SecureDocument::where('agency_id', auth()->user()->agency_id)
+            ->findOrFail($id);
+
+        Gate::authorize('update', $document);
+
         // FIX 3: Update enum validation to accept 'verified' instead of 'approved' to match React and database
         $validated = $request->validate([
             'status' => ['required', 'in:pending_review,verified,rejected'],
         ]);
-
-        $document = SecureDocument::where('agency_id', auth()->user()->agency_id)
-            ->findOrFail($id);
 
         // FIX 4: Update 'status' column
         $document->update(['status' => $validated['status']]);

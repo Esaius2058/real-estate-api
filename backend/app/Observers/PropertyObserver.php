@@ -12,7 +12,8 @@ class PropertyObserver
      */
     public function created(Property $property): void
     {
-        if ($property->status === 'active' || $property->status === 'active_listing') {
+        // Check if the service is actually configured before dispatching
+        if (!empty(config('services.agent.url')) && in_array($property->status, ['active', 'active_listing'])) {
             DispatchPropertyMatch::dispatch($property);
         }
     }

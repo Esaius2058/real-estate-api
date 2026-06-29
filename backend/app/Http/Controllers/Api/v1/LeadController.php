@@ -39,41 +39,48 @@ class LeadController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        // 1. Validate incoming data (Note: if this is public, remove auth middleware)
+        // 1. Validate incoming data
         $validated = $request->validate([
-            'property_id' => 'required|exists:properties,id',
-            'contact_name' => 'required|string',
-            'contact_email' => 'required|email',
-            'contact_phone' => 'required|string',
+            'property_id'     => 'required|exists:properties,id',
+            'contact_name'    => 'required|string|max:255',
+            'contact_email'   => 'required|email|max:255',
+            'contact_phone'   => 'required|string|max:50',
             'estimated_value' => 'nullable|numeric',
-            'notes' => 'nullable|string',
+            'notes'           => 'nullable|string', // Will be moved to lead_requirements
         ]);
 
-        // 2. Lookup the property to identify the listing agent
+        // 2. Lookup the property
         $property = \App\Models\Property::findOrFail($validated['property_id']);
 
-        // 3. Prepare data for the Lead Service
-        // We use the property owner's IDs for correct routing
+        // 3. Prepare data mapping to your exact schema
         $leadData = [
-            'property_id'     => $property->id,
-            'agency_id'       => $property->agency_id, // Route to the property's agency
-            'agent_id'        => $property->user_id,   // ROUTE TO LISTING AGENT
-            'name'            => $validated['contact_name'],
-            'email'           => $validated['contact_email'],
-            'phone'           => $validated['contact_phone'],
-            'value'           => $validated['estimated_value'],
-            'notes'           => $validated['notes'],
-            'kanban_stage'    => 'new', 
+            'property_id'  => $property->id,
+            'agency_id'    => $property->agency_id,
+            'agent_id'     => $property->user_id,
+            'name'         => $validated['contact_name'],
+            'email'        => $validated['contact_email'],
+            'phone'        => $validated['contact_phone'],
+            'value'        => $validated['estimated_value'],
+            'kanban_stage' => 'new',
+            // Move notes into the JSON requirements column
+            'lead_requirements' => [
+                'notes' => $validated['notes'] ?? null,
+                'source' => 'public_inquiry'
+            ],
         ];
 
-        // 4. Create the lead via your service
-        $lead = $this->leadService->createLead($leadData, $property->user_id);
+        // 4. Create the lead
+        // Note: If you don't use a service, use \App\Models\Lead::create($leadData)
+        $lead = \App\Models\Lead::create($leadData);
 
-        // 5. Invalidate caches for the listing agent (the recipient of the lead)
+        // 5. Invalidate caches for the listing agent
         Cache::forget("agency_{$property->agency_id}_user_{$property->user_id}_leads_page_1");
         Cache::forget("agency_{$property->agency_id}_leads_page_1"); 
 
-        return response()->json(['data' => $lead, 'message' => 'Lead successfully routed.'], 201);
+        return response()->json([
+            'data' => $lead, 
+            'message' => 'Lead successfully routed.'
+        ], 201);
     }
 
     public function show(Lead $lead): JsonResponse

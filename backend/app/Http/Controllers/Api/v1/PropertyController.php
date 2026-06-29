@@ -81,16 +81,6 @@ class PropertyController extends Controller
                 $property = Property::create($validated);
                 $imageRecords = [];
 
-                $saveBase64Image = function ($base64String) {
-                    @list($type, $file_data) = explode(';', $base64String);
-                    @list(, $file_data) = explode(',', $file_data);
-                    
-                    $imageName = 'properties/' . Str::random(20) . '.png';
-                    Storage::disk('public')->put($imageName, base64_decode($file_data));
-                    
-                    return $imageName;
-                };
-
                 if (!empty($imagesPayload['main'])) {
                     $imageRecords[] = [
                         'property_id' => $property->id,
@@ -141,14 +131,19 @@ class PropertyController extends Controller
 
     public function show($id): JsonResponse
     {
-        $propertyData = Cache::remember("property_show_{$id}", now()->addMinutes(60), function () use ($id) {
-            $property = Property::with(['images', 'agent'])->findOrFail($id);
+        $cacheKey = "property_show_{$id}";
+
+        $propertyData = Cache::remember($cacheKey, now()->addHours(24), function () use ($id) {
+            // Eager load ALL relationships used by PropertyResource
+            $property = Property::with(['images', 'agent', 'agency'])->findOrFail($id);
             
+            // Return the array data, not the JsonResponse object
             return (new PropertyResource($property))->response()->getData(true);
         });
 
         return response()->json($propertyData);
     }
+    
 
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
@@ -157,6 +152,7 @@ class PropertyController extends Controller
         $property->update($request->validated());
 
         Cache::forget("properties_page_1"); 
+        Cache::forget("property_show_{$property->id}");
         
         return response()->json(['message' => 'Updated successfully', 'data' => $property]);
     }
@@ -181,13 +177,21 @@ class PropertyController extends Controller
     {
         $request->validate(['url' => ['required', 'string']]);
 
-        \Illuminate\Support\Facades\Gate::authorize('update', $property);
+        Gate::authorize('update', $property);
+
+        $rawPath = Str::contains($request->url, 'http') 
+            ? Str::after($request->url, '/public/bucket/') 
+            : $request->url;
+
+        // FIX: Set is_primary if it's the first image, or based on your UI logic
+        $isPrimary = $property->images()->count() === 0 ? 1 : 0;
 
         $image = $property->images()->create([
-            's3_path' => $request->url, 
+            's3_path' => $rawPath,
+            'is_primary' => $isPrimary,
         ]);
 
-        \Illuminate\Support\Facades\Cache::forget("property_show_{$property->id}");
+        Cache::forget("property_show_{$property->id}");
 
         return response()->json([
             'success' => true,
@@ -241,7 +245,6 @@ class PropertyController extends Controller
         $price = $request->query('price');
         $excludeId = $request->query('exclude_id');
 
-        // Find properties in same location, same type, within +/- 25% price range
         $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
             ->where('type', $type)
             ->when($excludeId, function($query, $excludeId) {
@@ -264,18 +267,16 @@ class PropertyController extends Controller
                 'location' => 'required|string',
                 'price' => 'required|numeric',
                 'property_type' => 'required|string',
-                'force_refresh' => 'boolean', // NEW: Allows UI to bypass cache
+                'force_refresh' => 'boolean',
             ]);
 
             $property = \App\Models\Property::find($validated['property_id']);
             $forceRefresh = $request->boolean('force_refresh', false);
 
-            // 1. CACHE CHECK: If it exists and we aren't forcing a refresh, return it instantly
             if (!$forceRefresh && !empty($property->roi_forecast)) {
                 return response()->json($property->roi_forecast);
             }
 
-            // 2. Fetch Comps for Python
             $location = $validated['location'];
             $type = $validated['property_type'];
             $price = $validated['price'];
@@ -304,7 +305,6 @@ class PropertyController extends Controller
 
             $forecastData = $response->json();
 
-            // 3. SAVE TO DB: Cache the successful forecast on the property
             $property->update(['roi_forecast' => $forecastData]);
 
             return response()->json($forecastData);
@@ -317,21 +317,12 @@ class PropertyController extends Controller
 
     public function destroy(\App\Models\Property $property)
     {
+        if (auth()->user()->role === 'agent' && $property->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized. Agents can only delete their own properties.'], 403);
+        }
+
         try {
-            $property = \App\Models\Property::withoutGlobalScopes()->find($id);
-
-            if (!$property) {
-                return response()->json(['message' => 'Property not found in database'], 404);
-            }
-
-            // Ensure the current agent actually owns this property
-            if ($property->agency_id !== auth()->user()->agency_id) {
-               return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
             $images = $property->images ?? [];
-
-            // 1. Delete Supabase Images to free up storage
             $pathsToDelete = [];
             
             if (!empty($images['main'])) {
@@ -345,8 +336,6 @@ class PropertyController extends Controller
             }
 
             if (!empty($pathsToDelete)) {
-                // Ensure your config/filesystems.php is configured for Supabase/S3
-                // This deletes the files directly from the bucket
                 foreach ($pathsToDelete as $path) {
                     try {
                         Storage::disk('s3')->delete($path);
@@ -356,14 +345,19 @@ class PropertyController extends Controller
                 }
             }
 
-            // 2. Delete the database record
+            $propertyId = $property->id;
             $property->delete();
+
+            Cache::forget("property_show_{$propertyId}");
 
             return response()->json(['message' => 'Property securely deleted'], 200);
 
         } catch (\Exception $e) {
             Log::error('Property Deletion Error: ' . $e->getMessage());
-            return response()->json(['message' => 'Failed to delete property'], 500);
+            return response()->json([
+                'message' => 'Failed to delete property',
+                'error' => $e->getMessage() 
+            ], 500);
         }
     }
-}    
+}

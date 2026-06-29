@@ -7,17 +7,24 @@ namespace App\Models;
 use App\Traits\BelongsToAgency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Lead extends Model
 {
     use BelongsToAgency;
+    use HasFactory;
+
+    protected $casts = [
+        'lead_requirements' => 'array',
+    ];
 
     protected $fillable = [
         'agency_id',
-        'agent_id',      // This was causing the hard crash
-        'name',          // These were silently stripped
+        'agent_id',      
+        'property_id',
+        'name',          
         'email',
         'phone',
         'value',

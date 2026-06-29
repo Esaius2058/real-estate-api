@@ -23,6 +23,10 @@ class DispatchPropertyMatch implements ShouldQueue
         // e.g., AGENT_SERVICE_TOKEN=your_secure_random_string
         $serviceToken = config('services.agent.token');
 
+        if (empty($serviceToken)) {
+            Log::warning('DispatchPropertyMatch skipped: AGENT_SERVICE_URL not set.');
+            return;
+        }
         $response = Http::timeout(60)
             ->withToken($serviceToken)
             ->post(config('services.agent.url', 'http://127.0.0.1:8001') . '/agents/match', [

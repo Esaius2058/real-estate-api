@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Traits\BelongsToAgency;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -15,7 +16,7 @@ use App\Models\Subscription;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable, BelongsToAgency;
+    use HasApiTokens, Notifiable, HasFactory, BelongsToAgency;
 
     protected $fillable = [
         'agency_id', 'name', 'email', 'password', 'role', 'avatar_path',

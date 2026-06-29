@@ -21,7 +21,8 @@ return new class extends Migration
 
             $table->enum('role', [
                 'admin',
-                'agent'
+                'agent',
+                'client'
             ])->default('agent');
         });
     }
