@@ -20,16 +20,7 @@ use App\Http\Controllers\Api\v1\SubscriptionController;
 use App\Http\Controllers\Api\v1\EscrowController;
 use App\Http\Controllers\Api\v1\AdminDashboardController;
 use App\Http\Controllers\Api\v1\PayoutController;
-
-
-//chatbot
-use App\Http\Controllers\Api\v1\ChatController;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes — Production Environment Pipeline
-|--------------------------------------------------------------------------
-*/
+use App\Http\Middleware\VerifyM2MToken;
 
 // PUBLIC GATEWAY CHANNELS (No Authentication Required)
 
@@ -67,6 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticationController::class, 'logout']);
     Route::get('/me', [AuthenticationController::class, 'me']);
     Route::post('/me', [AuthenticationController::class, 'updateProfile']);
+    Route::get('/me/notifications', [AlertController::class, 'index']);
+    Route::post('/me/notifications/read', [AlertController::class, 'markAsRead']);
     Route::post('/password/update', [PasswordController::class, 'update']);
     Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
     
@@ -167,5 +160,34 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
         Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);
     });
-  
+
+    Route::post('/matches/draft', [App\Http\Controllers\Api\v1\AlertController::class, 'draftProposal']);
+
+    Route::post('/properties/predict-roi', [App\Http\Controllers\Api\v1\AlertController::class, 'predictROI']);
+
+    Route::get('/properties/comps', [App\Http\Controllers\Api\v1\PropertyController::class, 'getComps']);
+    Route::post('/properties/predict-roi', [App\Http\Controllers\Api\v1\PropertyController::class, 'predictROI']);
+
 });
+
+Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::class)->group(function () {
+        Route::get('/agencies/{agencyId}/leads', function ($agencyId) {
+            $leads = \App\Models\Lead::withoutGlobalScopes()
+                                    ->where('agency_id', $agencyId)
+                                    ->where('kanban_stage', 'new')
+                                    ->get();
+            return response()->json(['data' => $leads]);
+        });
+
+        Route::get('/agencies/{agencyId}/properties', function ($agencyId) {
+            $properties = \App\Models\Property::withoutGlobalScopes()
+                                    ->where('agency_id', $agencyId)
+                                    ->whereIn('status', ['active', 'active_listing'])
+                                    ->get();
+            return response()->json(['data' => $properties]);
+        });
+
+        Route::post('/alerts/property-matches', [
+            \App\Http\Controllers\Api\v1\AlertController::class, 'storePropertyMatches'
+        ]);
+    });

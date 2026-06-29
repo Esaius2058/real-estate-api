@@ -81,16 +81,6 @@ class PropertyController extends Controller
                 $property = Property::create($validated);
                 $imageRecords = [];
 
-                $saveBase64Image = function ($base64String) {
-                    @list($type, $file_data) = explode(';', $base64String);
-                    @list(, $file_data) = explode(',', $file_data);
-                    
-                    $imageName = 'properties/' . Str::random(20) . '.png';
-                    Storage::disk('public')->put($imageName, base64_decode($file_data));
-                    
-                    return $imageName;
-                };
-
                 if (!empty($imagesPayload['main'])) {
                     $imageRecords[] = [
                         'property_id' => $property->id,
@@ -141,14 +131,19 @@ class PropertyController extends Controller
 
     public function show($id): JsonResponse
     {
-        $propertyData = Cache::remember("property_show_{$id}", now()->addMinutes(60), function () use ($id) {
-            $property = Property::with(['images', 'agent'])->findOrFail($id);
+        $cacheKey = "property_show_{$id}";
+
+        $propertyData = Cache::remember($cacheKey, now()->addHours(24), function () use ($id) {
+            // Eager load ALL relationships used by PropertyResource
+            $property = Property::with(['images', 'agent', 'agency'])->findOrFail($id);
             
+            // Return the array data, not the JsonResponse object
             return (new PropertyResource($property))->response()->getData(true);
         });
 
         return response()->json($propertyData);
     }
+    
 
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
@@ -157,6 +152,7 @@ class PropertyController extends Controller
         $property->update($request->validated());
 
         Cache::forget("properties_page_1"); 
+        Cache::forget("property_show_{$property->id}");
         
         return response()->json(['message' => 'Updated successfully', 'data' => $property]);
     }
@@ -181,13 +177,21 @@ class PropertyController extends Controller
     {
         $request->validate(['url' => ['required', 'string']]);
 
-        \Illuminate\Support\Facades\Gate::authorize('update', $property);
+        Gate::authorize('update', $property);
+
+        $rawPath = Str::contains($request->url, 'http') 
+            ? Str::after($request->url, '/public/bucket/') 
+            : $request->url;
+
+        // FIX: Set is_primary if it's the first image, or based on your UI logic
+        $isPrimary = $property->images()->count() === 0 ? 1 : 0;
 
         $image = $property->images()->create([
-            's3_path' => $request->url, 
+            's3_path' => $rawPath,
+            'is_primary' => $isPrimary,
         ]);
 
-        \Illuminate\Support\Facades\Cache::forget("property_show_{$property->id}");
+        Cache::forget("property_show_{$property->id}");
 
         return response()->json([
             'success' => true,
@@ -234,13 +238,126 @@ class PropertyController extends Controller
         }
     }
 
-    public function destroy(Property $property): JsonResponse
+    public function getComps(Request $request)
     {
-        $this->authorize('delete', $property);
+        $location = $request->query('location');
+        $type = $request->query('type', 'Apartment');
+        $price = $request->query('price');
+        $excludeId = $request->query('exclude_id');
 
-        $property->images()->delete(); 
-        $property->delete();
+        $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
+            ->where('type', $type)
+            ->when($excludeId, function($query, $excludeId) {
+                return $query->where('id', '!=', $excludeId);
+            })
+            ->whereBetween('price', [$price * 0.75, $price * 1.25])
+            ->whereIn('status', ['active', 'sold'])
+            ->limit(5)
+            ->get(['id', 'title', 'price', 'status', 'bedrooms', 'baths']);
 
-        return response()->json(['message' => 'Property deleted.'], 200);
+        return response()->json(['data' => $comps]);
+    }
+
+    public function predictROI(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'property_id' => 'required|integer|exists:properties,id',
+                'property_title' => 'required|string',
+                'location' => 'required|string',
+                'price' => 'required|numeric',
+                'property_type' => 'required|string',
+                'force_refresh' => 'boolean',
+            ]);
+
+            $property = \App\Models\Property::find($validated['property_id']);
+            $forceRefresh = $request->boolean('force_refresh', false);
+
+            if (!$forceRefresh && !empty($property->roi_forecast)) {
+                return response()->json($property->roi_forecast);
+            }
+
+            $location = $validated['location'];
+            $type = $validated['property_type'];
+            $price = $validated['price'];
+
+            $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
+                ->where('type', $type)
+                ->where('id', '!=', $property->id)
+                ->whereBetween('price', [$price * 0.75, $price * 1.25])
+                ->whereIn('status', ['active', 'sold'])
+                ->limit(5)
+                ->get(['id', 'title', 'price', 'status', 'bedrooms', 'baths'])
+                ->toArray();
+
+            $payload = $validated;
+            $payload['comparable_listings'] = $comps;
+
+            $agentUrl = env('AGENT_SERVICE_URL', 'http://127.0.0.1:8001');
+            Log::info("Sending AI request to: " . $agentUrl . '/agents/roi-forecast');
+
+            $response = Http::timeout(60)->post($agentUrl . '/agents/roi-forecast', $payload);
+
+            if ($response->failed()) {
+                Log::error('AI Service Error: ' . $response->body());
+                return response()->json(['message' => 'Analysis Service unavailable', 'error' => $response->body()], 500);
+            }
+
+            $forecastData = $response->json();
+
+            $property->update(['roi_forecast' => $forecastData]);
+
+            return response()->json($forecastData);
+
+        } catch (\Exception $e) {
+            Log::error('ROI System Error: ' . $e->getMessage());
+            return response()->json(['message' => 'Internal server error', 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroy(\App\Models\Property $property)
+    {
+        if (auth()->user()->role === 'agent' && $property->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized. Agents can only delete their own properties.'], 403);
+        }
+
+        try {
+            $images = $property->images ?? [];
+            $pathsToDelete = [];
+            
+            if (!empty($images['main'])) {
+                $pathsToDelete[] = $images['main'];
+            }
+            if (!empty($images['interior']) && is_array($images['interior'])) {
+                $pathsToDelete = array_merge($pathsToDelete, $images['interior']);
+            }
+            if (!empty($images['exterior']) && is_array($images['exterior'])) {
+                $pathsToDelete = array_merge($pathsToDelete, $images['exterior']);
+            }
+
+            if (!empty($pathsToDelete)) {
+                foreach ($pathsToDelete as $path) {
+                    try {
+                        Storage::disk('s3')->delete($path);
+                    } catch (\Exception $e) {
+                        Log::warning("Failed to delete Supabase image during property deletion: " . $path);
+                    }
+                }
+            }
+
+            $propertyId = $property->id;
+            $property->delete();
+
+            Cache::forget("property_show_{$propertyId}");
+
+            return response()->json(['message' => 'Property securely deleted'], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Property Deletion Error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to delete property',
+                'error' => $e->getMessage() 
+            ], 500);
+        }
     }
 }

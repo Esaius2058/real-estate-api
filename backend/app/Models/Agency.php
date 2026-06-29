@@ -6,10 +6,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Agency extends Model
 {
-    protected $fillable = ['name', 'slug', 'domain', 'config'];
+    use HasFactory;
+    
+    protected $fillable = [
+        'name',
+        'join_code', 
+        'location',
+        'subscription_tier',
+    ];
     
     protected $casts = [
         'config' => 'array',

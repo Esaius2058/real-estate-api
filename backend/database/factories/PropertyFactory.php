@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use App\Models\Property;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,11 +21,19 @@ class PropertyFactory extends Factory
     public function definition(): array
     {
         return [
-            // Safely grab an existing user ID, or generate a new user if the DB is completely empty
-            'user_id'  => \App\Models\User::first()->id ?? \App\Models\User::factory(),
-            'title'    => $this->faker->streetName() . ' Property',
-            'price'    => $this->faker->numberBetween(150000, 850000),
-            'location' => $this->faker->city(),
+            'user_id' => User::factory(),
+            'agency_id' => function (array $attributes) {
+                return User::find($attributes['user_id'])->agency_id;
+            },
+            'title' => fake()->streetAddress() . ' Property',
+            'price' => fake()->randomFloat(2, 50000, 5000000),
+            'location' => fake()->address(),
+            'city' => fake()->city(),
+            // Added missing required fields based on your schema
+            'bedrooms' => fake()->numberBetween(1, 6),
+            'baths' => fake()->numberBetween(1, 4),
+            'sqft' => fake()->numberBetween(500, 5000),
+            'description' => fake()->paragraph(),
         ];
     }
 }

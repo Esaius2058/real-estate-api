@@ -7,7 +7,10 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Http\Request;
+use App\Models\Lead;
+use App\Observers\LeadObserver;
 use App\Models\Property;
+use App\Observers\PropertyObserver;
 use App\Policies\PropertyPolicy;
 
 class AppServiceProvider extends ServiceProvider
@@ -36,5 +39,8 @@ class AppServiceProvider extends ServiceProvider
                 ? Limit::perMinute(10)->by($request->user()->id)
                 : Limit::perMinute(3)->by($request->ip());
         });
+
+        Property::observe(PropertyObserver::class);
+        Lead::observe(LeadObserver::class);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agency;
@@ -42,9 +42,15 @@ class AgencyController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // 1. Intercept and force lowercase for case-insensitive validation
+        if ($request->has('role')) {
+            $request->merge(['role' => strtolower($request->input('role'))]);
+        }
+
+        // 2. Validate against your exact database enum values
         $validated = $request->validate([
             'agency_name' => ['required', 'string', 'max:255'],
-            'role'        => ['required', 'in:Admin,Agent'],
+            'role'        => ['required', 'in:admin,agent'], 
         ]);
 
         $user = auth()->user();
@@ -53,20 +59,18 @@ class AgencyController extends Controller
             return response()->json(['message' => 'You are already assigned to an agency.'], 409);
         }
 
-        $agency = Agency::create([
+        $agency = \App\Models\Agency::create([
             'name'      => $validated['agency_name'],
-            'join_code' => strtoupper(Str::random(4)) . '-' . rand(1000, 9999),
+            'join_code' => strtoupper(\Illuminate\Support\Str::random(4)) . '-' . rand(1000, 9999),
         ]);
 
         $user->update([
             'agency_id' => $agency->id,
-            'role'      => strtolower($validated['role']),
+            'role'      => $validated['role'], // Already lowercase now
         ]);
 
-        // No cache invalidation needed here since this is a brand new agency
-
         return response()->json([
-            // ... (keep your existing response mapping) ...
+            'message' => 'Workspace initialized successfully',
             'agency' => $agency,
         ], 201);
     }
@@ -96,15 +100,18 @@ class AgencyController extends Controller
     /**
      * PUT /v1/agency/{agency}
      */
-    public function update(UpdateAgencyRequest $request, Agency $agency): JsonResponse
+    public function update(UpdateAgencyRequest $request, \App\Models\Agency $agency): \Illuminate\Http\JsonResponse
     {
-        $this->authorize('update', $agency);
+        // Authorization is already handled by UpdateAgencyRequest
 
         $agency->update($request->validated());
 
         // CRITICAL: Invalidate the agency cache
-        Cache::forget("agency_{$agency->id}");
+        \Illuminate\Support\Facades\Cache::forget("agency_{$agency->id}");
 
-        return response()->json(['data' => $agency->fresh()]);
+        return response()->json([
+            'message' => 'Agency updated successfully',
+            'data' => $agency->fresh()
+        ], 200);
     }
 }

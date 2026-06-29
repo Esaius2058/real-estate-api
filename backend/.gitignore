@@ -4,6 +4,7 @@ cat >> .gitignore << 'EOF'
 .env
 .env.backup
 .env.production
+.env*
 
 .postman/
 postman/
@@ -24,3 +25,5 @@ storage/app/private/
 # Logs
 storage/logs/*.log
 EOF
+
+phpunit.xml
