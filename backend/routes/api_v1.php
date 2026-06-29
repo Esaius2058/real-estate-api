@@ -184,14 +184,6 @@ Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::cl
             return response()->json(['data' => $properties]);
         });
 
-        Route::get('/agencies/{agencyId}/properties', function ($agencyId) {
-        $properties = \App\Models\Property::withoutGlobalScopes()
-                                ->where('agency_id', $agencyId)
-                                ->whereIn('status', ['active', 'active_listing'])
-                                ->get();
-        return response()->json(['data' => $properties]);
-    });
-
         Route::post('/alerts/property-matches', [
             \App\Http\Controllers\Api\v1\AlertController::class, 'storePropertyMatches'
         ]);
