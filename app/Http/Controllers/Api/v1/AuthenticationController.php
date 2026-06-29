@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Api\v1\LogController;
 
 class AuthenticationController extends Controller
 {
@@ -47,24 +48,27 @@ class AuthenticationController extends Controller
         ], 201);
     }
 
-    public function login(LoginRequest $request): JsonResponse
+   public function login(LoginRequest $request): JsonResponse
     {
         $user = User::where('email', $request->email)->first();
 
-        // Standardized to send an explicit 401 response instead of a structural 422 framework exception
         if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'Invalid email or password credentials.'
             ], 401);
         }
 
-        // Wipe old tokens to prevent database bloat from multiple logins
+        // Log the login activity
+        \App\Http\Controllers\Api\v1\LogController::logActivity(
+            $user, 
+            'USER_LOGIN', 
+            "User {$user->name} logged in from " . $request->ip()
+        );
+
+        // Wipe old tokens
         $user->tokens()->delete();
 
-        // Check if the user requested a long-lived session
         $expiration = $request->boolean('remember') ? now()->addDays(7) : now()->addHours(2);
-
-        // Issue the token with a strict expiration date
         $token = $user->createToken('makao-auth-token', ['*'], $expiration)->plainTextToken;
 
         return response()->json([
@@ -76,6 +80,7 @@ class AuthenticationController extends Controller
                 'role'      => $user->role,
                 'agency_id' => $user->agency_id,
             ],
+            // RESTORED: The profile array your frontend desperately needs!
             'profile' => [
                 'id'       => $user->id,
                 'email'    => $user->email,
@@ -85,7 +90,6 @@ class AuthenticationController extends Controller
             ],
         ]);
     }
-
     public function updateProfile(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -152,12 +156,20 @@ class AuthenticationController extends Controller
         ]);
     }
 
-    public function logout(Request $request): JsonResponse
+public function logout(Request $request): JsonResponse
     {
         $user = $request->user();
 
         if ($user) {
-            $user->tokens()->delete(); // Clear out current active personal access tokens safely
+            // Log the logout action before deleting the tokens
+            \App\Http\Controllers\Api\v1\LogController::logActivity(
+                $user, 
+                'USER_LOGOUT', 
+                "User {$user->name} logged out."
+            );
+
+            // Clear out current active personal access tokens safely
+            $user->tokens()->delete(); 
         }
 
         return response()->json(['message' => 'Logged out successfully']);

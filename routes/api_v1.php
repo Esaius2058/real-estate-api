@@ -152,6 +152,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── High-Clearance Routes (Strictly Dedicated Admins) ────────────────────
     Route::middleware('role:admin')->group(function () {
+        // User Management & Access Control
+       Route::delete('/admin/users/{id}', [UserController::class, 'destroy']);
         // Core Agency Configurations
         Route::put('/agency/{agency}', [AgencyController::class, 'update']);
 
