@@ -48,6 +48,13 @@ class PropertyResource extends JsonResource
                 'email' => $this->agent->email,
             ]),
 
+            'agency' => $this->whenLoaded('agency', fn() => $this->agency ? [
+                'id'   => $this->agency->id,
+                'name' => $this->agency->name,
+                'location' => $this->agency->location,
+                'subscription_tier' => $this->agency->subscription_tier,
+            ] : null),
+
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

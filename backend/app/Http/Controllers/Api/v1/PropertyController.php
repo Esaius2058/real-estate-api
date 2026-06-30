@@ -8,6 +8,7 @@ use App\Models\PropertyImage;
 use App\Http\Requests\Property\StorePropertyRequest;
 use App\Http\Requests\Property\UpdatePropertyRequest;
 use App\Http\Resources\Property\PropertyResource;
+use App\Jobs\ProcessPropertyView;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -129,17 +130,29 @@ class PropertyController extends Controller
         }
     }
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         $cacheKey = "property_show_{$id}";
 
+        // 1. Developer/Admin Cache Bypass
+        // Allows staff to see immediate updates without waiting 24 hours
+        if ($request->has('fresh') && $request->user()?->can('manage-system')) {
+            Cache::forget($cacheKey);
+        }
+
         $propertyData = Cache::remember($cacheKey, now()->addHours(24), function () use ($id) {
-            // Eager load ALL relationships used by PropertyResource
-            $property = Property::with(['images', 'agent', 'agency'])->findOrFail($id);
+            $property = Property::with(['images', 'agent', 'agency'])
+                ->whereIn('status', ['active', 'active_listing']) // STRICT SCOPE: Block unlisted assets
+                ->findOrFail($id);
             
-            // Return the array data, not the JsonResponse object
             return (new PropertyResource($property))->response()->getData(true);
         });
+
+        // 2. Tactical Efficiency: Asynchronous View Tracking
+        // Fires after the JSON is sent to the user. Zero impact on load time.
+        if (!$request->user()?->can('manage-system')) {
+            ProcessPropertyView::dispatchAfterResponse($id, $request->ip(), $request->user()?->id);
+        }
 
         return response()->json($propertyData);
     }
@@ -155,6 +168,62 @@ class PropertyController extends Controller
         Cache::forget("property_show_{$property->id}");
         
         return response()->json(['message' => 'Updated successfully', 'data' => $property]);
+    }
+
+    public function storeScrapedProperty(Request $request)
+    {
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'price'       => 'required|numeric',
+            'location'    => 'required|string',
+            'city'        => 'required|string',
+            'bedrooms'    => 'nullable|integer',
+            'baths'       => 'nullable|integer',
+            'sqft'        => 'nullable|integer',
+            'description' => 'required|string',
+            'status'      => 'required|string',
+            'type'        => 'nullable|string',
+            'amenities'   => 'nullable|array',
+            'images'      => 'required|array',
+            'images.main' => 'nullable|string',
+            'images.interior' => 'nullable|array',
+            'images.exterior' => 'nullable|array',
+        ]);
+
+        // Inside the DB::transaction block:
+        $property = Property::create([
+            'agency_id'   => $request->route('agencyId') ?? $request->input('agency_id', 1), // Fallback or route param
+            'title'       => $validated['title'],
+            'price'       => $validated['price'],
+            'location'    => $validated['location'],
+            'city'        => $validated['city'],
+            'bedrooms'    => $validated['bedrooms'],
+            'baths'       => $validated['baths'],
+            'sqft'        => $validated['sqft'],
+            'description' => $validated['description'],
+            'type'        => $validated['type'],
+            'amenities'   => json_encode($validated['amenities']),
+            'status'      => $validated['status'],
+        ]);
+
+        // Store Main Image
+        if (!empty($validated['images']['main'])) {
+            $property->images()->create(['path' => $validated['images']['main'], 'type' => 'main']);
+        }
+
+        // Store Interior Images
+        if (!empty($validated['images']['interior'])) {
+            foreach ($validated['images']['interior'] as $path) {
+                $property->images()->create(['path' => $path, 'type' => 'interior']);
+            }
+        }
+
+        // Store Exterior Images
+        if (!empty($validated['images']['exterior'])) {
+            foreach ($validated['images']['exterior'] as $path) {
+                $property->images()->create(['path' => $path, 'type' => 'exterior']);
+            }
+        }
     }
 
     public function generatePublicSignedUrls(Request $request): JsonResponse

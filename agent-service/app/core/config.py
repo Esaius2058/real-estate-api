@@ -10,9 +10,11 @@ class Settings(BaseSettings):
     
     # Google Gemini Configuration
     GOOGLE_API_KEY: str
-    
     # Laravel Core API Connection
     LARAVEL_API_URL: str
+    # Supabase Credentials
+    SUPABASE_URL:         str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
     
     # Internal Service Authentication 
     #SERVICE_API_KEY: str = "secret-dev-key"

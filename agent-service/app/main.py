@@ -5,16 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import httpx
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List
-
 # Langchain Imports
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
-
 # Internal Imports
 from app.tools.laravel_client import LaravelClient
 from app.core.auth import get_current_user_token
 from app.api.verify import router as verify_router
 from app.api.market import router as marketing_router
+from app.api.scraper import router as scraper_router
 from app.core.config import settings
 from app.graphs.matching.graph import matching_app
 from app.graphs.matching.lead_graph import lead_matching_app
@@ -250,3 +249,4 @@ async def draft_proposal(req: DraftRequest):
 app.include_router(agents_router)
 app.include_router(verify_router)
 app.include_router(marketing_router)
+app.include_router(scraper_router)

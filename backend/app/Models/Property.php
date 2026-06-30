@@ -8,6 +8,7 @@ use App\Traits\BelongsToAgency;
 use App\Scopes\AgencyScope;
 use App\Models\User;
 use App\Models\PropertyImage;
+use App\Models\Agency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory; 
@@ -60,5 +61,10 @@ class Property extends Model
     public function images(): HasMany
     {
         return $this->hasMany(PropertyImage::class);
+    }
+
+    public function agency()
+    {
+        return $this->belongsTo(Agency::class, 'agency_id');
     }
 }
