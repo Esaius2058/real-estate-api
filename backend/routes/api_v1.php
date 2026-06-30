@@ -190,4 +190,6 @@ Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::cl
         Route::post('/alerts/property-matches', [
             \App\Http\Controllers\Api\v1\AlertController::class, 'storePropertyMatches'
         ]);
+
+        Route::post('/properties/scraped', [\App\Http\Controllers\Api\v1\PropertyController::class, 'storeScrapedProperty']);
     });

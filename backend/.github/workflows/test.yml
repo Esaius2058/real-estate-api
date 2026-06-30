@@ -1,0 +1,53 @@
+name: Makao Backend CI
+
+on:
+  push:
+    branches: [ "isaiah", "staging" ]
+  pull_request:
+    branches: [ "isaiah", "staging" ]
+
+jobs:
+  test-laravel:
+    name: Run Pest Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: makao_testing
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_mysql, bcmath, intl, gd, exif, iconv
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare Environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run Pest Tests
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: makao_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+        run: |
+          php artisan migrate:fresh --env=testing
+          ./vendor/bin/pest
