@@ -118,11 +118,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payouts/milestone/{id}/release', [PayoutController::class, 'releaseMilestonePayout']);
 
     // Back-Office Mediation & Administration Workspace
-    Route::prefix('admin')->middleware('can:manage-system')->group(function () {
-        Route::get('/dashboard/metrics', [AdminDashboardController::class, 'metrics']); 
-        Route::get('/disputes', [AdminDashboardController::class, 'disputes']); 
-        Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']); 
-    });
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+    Route::get('/dashboard-hub', [AdminDashboardController::class, 'getDashboardData']);
+    
+    Route::get('/disputes', [AdminDashboardController::class, 'disputes']);
+    Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']);
+});
 
     // =========================================================================
     // 3. STAFF & ELEVATED ROLE CONTROLS (Role Middleware Guarded)

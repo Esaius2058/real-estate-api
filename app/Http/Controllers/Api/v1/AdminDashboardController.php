@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Escrow;
-use App\Models\EscrowDispute;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +13,9 @@ use Exception;
 use App\Services\PaystackService;
 use App\Models\User;
 use App\Scopes\AgencyScope;
+use App\Models\Property;
+use App\Models\EscrowDispute;
+use App\Models\ActivityLog;
 
 class AdminDashboardController extends Controller
 {
@@ -63,23 +65,24 @@ class AdminDashboardController extends Controller
     {
         return response()->json(EscrowDispute::with(['escrow.buyer', 'escrow.seller', 'raisedBy'])->latest()->paginate(15));
     }
-public function getUsers()
-{
-    // Use the class name to disable the specific scope
-    $users = User::withoutGlobalScope(AgencyScope::class) 
-        ->select([
-            'id', 'name', 'email', 'role', 'status', 
-            'created_at as addDate', 
-            'last_active_at as lastActive'
-        ])
-        ->get();
 
-    return response()->json($users);
-}
+    public function getUsers()
+    {
+        $users = User::withoutGlobalScope(AgencyScope::class) 
+            ->select([
+                'id', 'name', 'email', 'role', 'status', 
+                'created_at as addDate', 
+                'last_active_at as lastActive'
+            ])
+            ->get();
+
+        return response()->json($users);
+    }
+
     public function resolveDispute(Request $request, $id)
     {
         $data = $request->validate([
-            'resolution' => 'required|in:force_refund,force_payout,manual',
+            'resolution' => 'required|in:force_refund,force_payout,manual,refund_to_buyer,released_to_seller',
             'admin_notes' => 'required|string|min:10',
         ]);
 
@@ -95,7 +98,7 @@ public function getUsers()
                 // Explicit total extraction conversion into absolute minor units (cents/pesewas)
                 $minorUnitAmount = (int)($escrow->total_paid * 100);
 
-                if ($data['resolution'] === 'force_refund') {
+                if (in_array($data['resolution'], ['force_refund', 'refund_to_buyer'])) {
                     $escrow->update(['status' => 'cancelled']);
                     
                     // Route structural distribution back to the buying entity profile
@@ -107,7 +110,7 @@ public function getUsers()
                     $payoutData = $this->paystack->initiateTransfer($minorUnitAmount, $recipientCode, "Arbitration Force Refund Block #{$escrow->id}");
                     $this->logOverrideAction($escrow->id, 'ARBITRATION_PAYSTACK_FORCE_REFUND', $minorUnitAmount, $payoutData);
 
-                } elseif ($data['resolution'] === 'force_payout') {
+                } elseif (in_array($data['resolution'], ['force_payout', 'released_to_seller'])) {
                     $escrow->update(['status' => 'completed', 'completed_at' => now()]);
                     
                     // Route structural distribution straight down to the selling entity profile
@@ -120,7 +123,6 @@ public function getUsers()
                     $this->logOverrideAction($escrow->id, 'ARBITRATION_PAYSTACK_FORCE_PAYOUT', $minorUnitAmount, $payoutData);
                 }
 
-                // Fixed error: Changed dynamic helper auth()->id() to the static Facade to pass Intelephense inspections
                 $dispute->update([
                     'status' => 'resolved',
                     'resolution' => $data['resolution'],
@@ -149,4 +151,81 @@ public function getUsers()
             'created_at' => now()
         ]);
     }
+
+    /**
+     *  UNIFIED DASHBOARD HUB
+     * Returns all data needed for the admin dashboard in ONE API call
+     */
+// AdminDashboardController.php
+
+/**
+ * UNIFIED DASHBOARD HUB
+ * Returns all data needed for the admin dashboard in ONE API call
+ */
+// In App\Http\Controllers\Api\v1\AdminDashboardController.php
+
+public function dashboardHub() 
+{
+    try {
+        $disputes = EscrowDispute::with(['escrow.buyer', 'escrow.seller', 'raisedBy'])
+            ->where('status', 'pending')
+            ->get();
+        
+        $totalVolume = Escrow::whereIn('status', ['funded', 'inspection', 'closing'])->sum('amount');
+        $totalUsers = User::count();
+        $totalAgencies = DB::table('agencies')->count();
+        
+        // Add property counts and recent list
+        $totalProperties = Property::count();
+        $recentProperties = Property::with('agent')->latest()->take(3)->get();
+        
+        $pendingKycCount = 0;
+        if (class_exists('\App\Models\VaultDocument')) {
+            $pendingKycCount = \App\Models\VaultDocument::where('status', 'pending')->count();
+        }
+        
+        $recentLogs = DB::table('activity_logs')
+            ->leftJoin('users', 'activity_logs.user_id', '=', 'users.id')
+            ->select(
+                'activity_logs.id', 
+                'activity_logs.action', 
+                'activity_logs.description', 
+                'activity_logs.created_at', 
+                'users.name as user_name'
+            )
+            ->orderBy('activity_logs.created_at', 'desc')
+            ->limit(20)
+            ->get();
+        
+        return response()->json([
+            'total_locked_volume' => (float)$totalVolume,
+            'disputes' => $disputes,
+            'disputes_count' => $disputes->count(),
+            'platform_revenue' => (float)($totalVolume * 0.015),
+            'total_users' => $totalUsers,
+            'total_agencies' => $totalAgencies,
+            'total_properties' => $totalProperties,        // Added
+            'recent_properties' => $recentProperties,      // Added
+            'pending_kyc_count' => $pendingKycCount,
+            'recent_logs' => $recentLogs,
+        ]);
+        
+    } catch (Exception $e) {
+        Log::error('Dashboard hub data fetch failed', ['error' => $e->getMessage()]);
+        return response()->json(['message' => 'Failed to load dashboard data'], 500);
+    }
+}
+public function getDashboardData(Request $request)
+{
+    return response()->json([
+        'users_count' => User::count(),
+        'properties_count' => Property::count(),
+        'escrows_count' => Escrow::count(),
+        'agencies_count' => \App\Models\Agency::count(),
+        'disputes_count' => EscrowDispute::where('status', 'pending')->count(),
+        'disputes' => EscrowDispute::where('status', 'pending')->with('raisedBy')->get(),
+        'recent_logs' => ActivityLog::latest()->take(15)->get(),
+        
+    ]);
+}
 }
