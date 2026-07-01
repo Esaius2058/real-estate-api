@@ -12,4 +12,8 @@ class ChatMessage extends Model
         'role',
         'content',
     ];
+
+    protected $casts = [
+        'content' => 'array', // Tells Laravel to json_encode on save, and json_decode on retrieve
+    ];
 }

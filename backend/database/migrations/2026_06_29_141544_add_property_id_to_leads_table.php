@@ -11,23 +11,25 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // 1. Add the column as nullable initially
-        Schema::table('leads', function (Blueprint $table) {
-            $table->unsignedBigInteger('property_id')->after('agent_id')->nullable();
-        });
+        // Only add the column if it doesn't exist
+        if (!Schema::hasColumn('leads', 'property_id')) {
+            Schema::table('leads', function (Blueprint $table) {
+                $table->unsignedBigInteger('property_id')->after('agent_id')->nullable();
+            });
+        }
 
-        // 2. (Optional) Populate existing leads with a default valid property ID
-        // If you don't care about existing leads' property association, 
-        // you can point them to a 'dummy' property or just leave them null if you don't add the constraint yet.
-        // DB::table('leads')->update(['property_id' => 1]); // Example: update existing leads to property #1
-
-        // 3. Add the foreign key constraint
-        Schema::table('leads', function (Blueprint $table) {
-            $table->foreign('property_id')
-                ->references('id')
-                ->on('properties')
-                ->onDelete('cascade');
-        });
+        // Only add the foreign key if it's not already there
+        // Note: This check is harder in Laravel, so we wrap it in a try-catch
+        try {
+            Schema::table('leads', function (Blueprint $table) {
+                $table->foreign('property_id')
+                    ->references('id')
+                    ->on('properties')
+                    ->onDelete('cascade');
+            });
+        } catch (\Exception $e) {
+            // Foreign key likely already exists
+        }
     }
 
     public function down(): void
