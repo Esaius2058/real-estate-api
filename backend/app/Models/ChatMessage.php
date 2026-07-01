@@ -8,6 +8,7 @@ class ChatMessage extends Model
 {
     protected $fillable = [
         'session_id',
+        'agency_id',
         'role',
         'content',
     ];

@@ -7,12 +7,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\v1\AuthenticationController;
 use App\Http\Controllers\Api\v1\PropertyController;
 use App\Http\Controllers\Api\v1\AgencyController;
-use App\Http\Controllers\Api\v1\AgentController; // <--- ADDED: Agent Controller
+use App\Http\Controllers\Api\v1\AgentController;
 use App\Http\Controllers\Api\v1\LeadController;
 use App\Http\Controllers\Api\v1\LeadKanbanController;
 use App\Http\Controllers\Api\v1\VaultDocumentController;
 use App\Http\Controllers\Api\v1\AdminPropertyController;
 use App\Http\Controllers\Api\v1\PasswordController;
+use App\Http\Controllers\Api\v1\InternalAiController;
+use App\Http\Controllers\Api\v1\ChatController;
 
 // Financial Engine Imports
 use App\Http\Controllers\Api\v1\PaymentController;
@@ -26,8 +28,6 @@ use App\Http\Middleware\VerifyM2MToken;
 
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
-//chatbot
-Route::post('/chat', [ChatController::class, 'sendMessage']);
 
 // Public Password Recovery Flows
 Route::post('/password/forgot', [PasswordController::class, 'sendResetCode']); 
@@ -62,6 +62,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/notifications/read', [AlertController::class, 'markAsRead']);
     Route::post('/password/update', [PasswordController::class, 'update']);
     Route::get('/dashboard/summary', 'App\Http\Controllers\Api\v1\DashboardController@index');
+    Route::post('/chat', [ChatController::class, 'sendMessage']);
     
     // Internal Lead Reads (Agents/Admins)
     Route::apiResource('/leads', LeadController::class)->except(['store']);
@@ -170,26 +171,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
-Route::prefix('internal/ai')->middleware(\App\Http\Middleware\VerifyM2MToken::class)->group(function () {
-        Route::get('/agencies/{agencyId}/leads', function ($agencyId) {
-            $leads = \App\Models\Lead::withoutGlobalScopes()
-                                    ->where('agency_id', $agencyId)
-                                    ->where('kanban_stage', 'new')
-                                    ->get();
-            return response()->json(['data' => $leads]);
-        });
+Route::prefix('internal/ai')
+    ->middleware(\App\Http\Middleware\VerifyM2MToken::class)
+    ->group(function () {
+        
+        // Context Queries
+        Route::get('/agencies/{agencyId}/leads', [InternalAiController::class, 'getLeads']);
+        Route::get('/agencies/{agencyId}/properties', [InternalAiController::class, 'getProperties']);
 
-        Route::get('/agencies/{agencyId}/properties', function ($agencyId) {
-            $properties = \App\Models\Property::withoutGlobalScopes()
-                                    ->where('agency_id', $agencyId)
-                                    ->whereIn('status', ['active', 'active_listing'])
-                                    ->get();
-            return response()->json(['data' => $properties]);
-        });
-
-        Route::post('/alerts/property-matches', [
-            \App\Http\Controllers\Api\v1\AlertController::class, 'storePropertyMatches'
-        ]);
-
-        Route::post('/properties/scraped', [\App\Http\Controllers\Api\v1\PropertyController::class, 'storeScrapedProperty']);
+        // Action Executions
+        Route::post('/alerts/property-matches', [AlertController::class, 'storePropertyMatches']);
+        Route::post('/properties/scraped', [PropertyController::class, 'storeScrapedProperty']);
+        
     });

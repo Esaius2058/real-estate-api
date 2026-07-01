@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Api\v1;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use Gemini\Laravel\Facades\Gemini; // Use the Facade
-use Gemini\Data\Content;
-use Gemini\Enums\Role;
+use Illuminate\Support\Facades\Http;
 use App\Models\ChatMessage;
 
 class ChatController extends Controller
@@ -17,44 +16,60 @@ class ChatController extends Controller
             'session_id' => 'required|string'
         ]);
 
-        // 1. Retrieve history
-        $history = ChatMessage::where('session_id', $request->session_id)
-            ->latest()
-            ->take(10)
-            ->get()
-            ->reverse();
-
-        $chatHistory = [];
-        foreach ($history as $msg) {
-            $chatHistory[] = Content::parse(
-                part: $msg->content,
-                role: $msg->role === 'user' ? Role::USER : Role::MODEL
-            );
+        $user = $request->user();
+        if (!$user || !$user->agency_id) {
+            return response()->json(['error' => 'Unauthorized tenant context'], 403);
         }
 
-        // 2. Prep system instruction
-        $systemInstruction = 'You are a helpful Real Estate assistant for the agency. Provide concise, professional property insights.';
-        
-        $messages = array_merge(
-            [Content::parse(part: $systemInstruction, role: Role::MODEL)],
-            $chatHistory
-        );
+        try {
+            $response = Http::timeout(60)
+                ->withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'Connection' => 'close',
+                ])
+                ->post(config('services.agent.url') . '/agents/chat', [
+                    'message' => $request->message,
+                    'session_id' => $request->session_id,
+                    'agency_id' => $user->agency_id, // Pass as integer
+                ]);
 
-        // 3. Use the Facade's generativeModel method
-        // Using 'gemini-3.5-flash' for stable, production-grade performance
-        $chat = Gemini::generativeModel('gemini-3.5-flash')
-            ->startChat(history: $messages);
+            // LOG THE ACTUAL PYTHON ERROR FOR DEBUGGING
+            if ($response->failed()) {
+                \Log::error("Python Agent Error: " . $response->body());
+                return response()->json([
+                    'error' => 'Agent service execution failed',
+                    'details' => $response->json() ?? $response->body()
+                ], 502);
+            }
 
-        $result = $chat->sendMessage($request->message);
+            $data = $response->json();
 
-        if (!$result->text()) {
-            return response()->json(['error' => 'Failed to get response'], 502);
+            // Check if the expected key exists
+            if (!isset($data['response'])) {
+                return response()->json(['error' => 'Invalid response format from agent'], 502);
+            }
+
+            // Persist history
+            ChatMessage::create([
+                'session_id' => $request->session_id, 
+                'agency_id'  => $user->agency_id,
+                'role'       => 'user', 
+                'content'    => $request->message
+            ]);
+            
+            ChatMessage::create([
+                'session_id' => $request->session_id, 
+                'agency_id'  => $user->agency_id,
+                'role'       => 'model', 
+                'content'    => $data['response']
+            ]);
+
+            return response()->json(['response' => $data['response']]);
+
+        } catch (\Exception $e) {
+            \Log::error("Agent Proxy General Error: " . $e->getMessage());
+            return response()->json(['error' => 'Could not connect to agent engine'], 503);
         }
-
-        // 4. Save to DB
-        ChatMessage::create(['session_id' => $request->session_id, 'role' => 'user', 'content' => $request->message]);
-        ChatMessage::create(['session_id' => $request->session_id, 'role' => 'model', 'content' => $result->text()]);
-
-        return response()->json(['response' => $result->text()]);
     }
 }
