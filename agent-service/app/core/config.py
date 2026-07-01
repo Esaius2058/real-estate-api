@@ -12,10 +12,11 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str
     # Laravel Core API Connection
     LARAVEL_API_URL: str
+    LARAVEL_M2M_TOKEN: str = os.getenv("LARAVEL_M2M_TOKEN", "")
     # Supabase Credentials
     SUPABASE_URL:         str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
-    
+    SUPABASE_PUBLISHABLE_KEY: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
+    MYSQL_URL: str = os.getenv("MYSQL_URL", "")
     # Internal Service Authentication 
     #SERVICE_API_KEY: str = "secret-dev-key"
 

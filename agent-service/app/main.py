@@ -14,6 +14,7 @@ from app.core.auth import get_current_user_token
 from app.api.verify import router as verify_router
 from app.api.market import router as marketing_router
 from app.api.scraper import router as scraper_router
+from app.api.chat import router as chat_router
 from app.core.config import settings
 from app.graphs.matching.graph import matching_app
 from app.graphs.matching.lead_graph import lead_matching_app
@@ -250,3 +251,4 @@ app.include_router(agents_router)
 app.include_router(verify_router)
 app.include_router(marketing_router)
 app.include_router(scraper_router)
+app.include_router(chat_router)
