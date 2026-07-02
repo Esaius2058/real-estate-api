@@ -1,10 +1,9 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Union
 from langchain_core.messages import HumanMessage, AIMessage
-import json
-from app.db.mysql import AsyncSessionLocal, ChatMessageDB
+
+# Import your compiled graph
 from app.graphs.chat.graph import chat_agent
 
 router = APIRouter(prefix="/agents")
@@ -12,95 +11,73 @@ router = APIRouter(prefix="/agents")
 class ChatRequest(BaseModel):
     message: str
     session_id: str
-    agency_id: int
-
-# Dependency to yield DB session
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session
+    agency_id: Union[int, str] # Accept both int and string from PHP
+    history: List[Dict[str, Any]] = Field(default_factory=list) # Forgive null values in history
 
 @router.post("/chat")
-async def send_message(req: ChatRequest, db: AsyncSession = Depends(get_db)):
-    if not req.message or not req.session_id:
-        raise HTTPException(status_code=400, detail="Message and session_id are required")
-
-    # 1. Retrieve history from MySQL (Latest 10)
+async def chat_endpoint(req: ChatRequest):
     try:
-        stmt = select(ChatMessageDB) \
-            .where(ChatMessageDB.session_id == req.session_id) \
-            .order_by(ChatMessageDB.created_at.desc()) \
-            .limit(10)
+        # 1. Initialize the LangChain memory array
+        chat_messages = []
         
-        result = await db.execute(stmt)
-        history_records = result.scalars().all()
-        # Reverse to chronological order for the LLM
-        history_records.reverse()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database read error: {str(e)}")
-
-    # 2. Format history for LangChain
-    chat_history = []
-    for msg in history_records:
-        if msg.role == "user":
-            chat_history.append(HumanMessage(content=msg.content))
-        elif msg.role == "model":
-            chat_history.append(AIMessage(content=msg.content))
-
-    chat_history.append(HumanMessage(content=req.message))
-
-    # 3. Invoke the LangGraph Agent
-    try:
-        run_config = {"configurable": {"agency_id": req.agency_id}}
-
-        result = await chat_agent.ainvoke({"messages": chat_history}, config=run_config)
-        
-        raw_content = result["messages"][-1].content
-        
-        if isinstance(raw_content, list):
-            text_pieces = [
-                block["text"] for block in raw_content 
-                if isinstance(block, dict) and "text" in block
-            ]
-            ai_response_text = "\n".join(text_pieces) if text_pieces else json.dumps(raw_content)
-        elif isinstance(raw_content, dict):
-            ai_response_text = raw_content.get("text", json.dumps(raw_content))
-        else:
-            ai_response_text = str(raw_content)
-
-    except Exception as e:
-        error_msg = str(e)
-        print(f"❌ LANGGRAPH EXECUTION FAILED: {error_msg}")
-        
-        # Check specifically for Gemini rate limits
-        if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
-            raise HTTPException(
-                status_code=429, 
-                detail="I'm receiving too many requests right now. Please give me about 30 seconds to catch my breath and try again!"
-            )
+        # 2. Parse the history sent by Laravel into LangChain objects
+        for msg in req.history:
+            raw_content = msg.get("content")
             
-        # Fallback for all other errors
-        raise HTTPException(status_code=502, detail=f"LLM processing failed: {error_msg}")
-    
-    # 4. Save to MySQL
-    try:
-        # Added agency_id to both database records here:
-        user_msg = ChatMessageDB(
-            session_id=req.session_id, 
-            agency_id=req.agency_id, 
-            role="user", 
-            content=req.message
-        )
-        model_msg = ChatMessageDB(
-            session_id=req.session_id, 
-            agency_id=req.agency_id, 
-            role="model", 
-            content=ai_response_text
-        )
+            # Handle list content (LangChain natively supports list formats for multimodal/blocks)
+            if isinstance(raw_content, list):
+                if len(raw_content) == 0:
+                    continue
+                safe_content = raw_content
+                
+            # Handle standard string content
+            elif isinstance(raw_content, str):
+                if not raw_content.strip():
+                    continue
+                safe_content = raw_content
+                
+            # Handle None or any other unexpected types
+            else:
+                if not raw_content:
+                    continue
+                safe_content = str(raw_content)
+                
+            # Safely instantiate the messages
+            if msg.get("role") == "user":
+                chat_messages.append(HumanMessage(content=safe_content))
+            elif msg.get("role") == "model":
+                chat_messages.append(AIMessage(content=safe_content))
+                
+        # 3. Append the new, incoming message from the user
+        chat_messages.append(HumanMessage(content=req.message))
         
-        db.add_all([user_msg, model_msg])
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
-        print(f"Failed to save chat history: {e}")
+        # 4. Invoke LangGraph with the formatted messages
+        # Pass agency_id in config so your tools can access it securely
+        run_config = {"configurable": {"thread_id": req.session_id, "agency_id": req.agency_id}}
+        
+        result = await chat_agent.ainvoke({"messages": chat_messages}, config=run_config)
+        
+        # 5. Extract the raw string from the AI's final message object
+        ai_response_text = result["messages"][-1].content
+        
+        # Flatten Gemini's multi-block arrays into a single string for the UI
+        if isinstance(ai_response_text, list):
+            flattened_text = []
+            for block in ai_response_text:
+                if isinstance(block, dict) and "text" in block:
+                    flattened_text.append(block["text"])
+                elif isinstance(block, str):
+                    flattened_text.append(block)
+            
+            ai_response_text = " ".join(flattened_text)
+            
+            # Fallback if no text was found (e.g., it was purely a tool call)
+            if not ai_response_text.strip():
+                ai_response_text = "I have processed that request using my tools."
 
-    return {"response": ai_response_text}
+        return {"response": ai_response_text}
+        
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc()) # Prints exact failure line to your terminal
+        raise HTTPException(status_code=500, detail=str(e))

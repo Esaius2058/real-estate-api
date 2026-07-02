@@ -58,6 +58,28 @@ class AuthenticationController extends Controller
             ], 401);
         }
 
+        // ── THE 2FA INTERCEPT ──
+        if ($user->two_factor_enabled) {
+            // Generate a secure 6-digit code
+            $code = sprintf("%06d", random_int(100000, 999999));
+            
+            $user->update([
+                'two_factor_code' => $code,
+                'two_factor_expires_at' => now()->addMinutes(10),
+            ]);
+
+            // TODO: Dispatch your Mail/SMS job here
+            // Mail::to($user->email)->send(new \App\Mail\TwoFactorCodeMail($code));
+
+            return response()->json([
+                'status' => '2fa_required',
+                'message' => 'Two-factor authentication required.',
+                'email' => $user->email
+            ], 200); // 200 OK because credentials were correct
+        }
+
+        // ── STANDARD LOGIN (2FA Disabled) ──
+        
         // Wipe old tokens to prevent database bloat from multiple logins
         $user->tokens()->delete();
 
@@ -68,6 +90,7 @@ class AuthenticationController extends Controller
         $token = $user->createToken('makao-auth-token', ['*'], $expiration)->plainTextToken;
 
         return response()->json([
+            'status'  => 'success',
             'message' => 'Login successful',
             'token'   => $token,
             'user'    => [
@@ -83,6 +106,41 @@ class AuthenticationController extends Controller
                 'agencyId' => $user->agency_id,
                 'name'     => $user->name,
             ],
+        ]);
+    }
+
+    public function verifyTwoFactor(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'code' => 'required|string|size:6',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found.'], 404);
+        }
+
+        // Check if code matches and is not expired
+        if ($user->two_factor_code !== $request->code || 
+            $user->two_factor_expires_at->isPast()) {
+            return response()->json(['message' => 'Invalid or expired code.'], 401);
+        }
+
+        // Verification successful: Clear the code
+        $user->update([
+            'two_factor_code' => null,
+            'two_factor_expires_at' => null,
+        ]);
+
+        // Issue the Sanctum token or establish the session
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return response()->json([
+            'status' => 'success',
+            'token' => $token,
+            'user' => $user
         ]);
     }
 

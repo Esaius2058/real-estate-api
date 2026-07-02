@@ -19,7 +19,15 @@ class User extends Authenticatable
     use HasApiTokens, Notifiable, HasFactory, BelongsToAgency;
 
     protected $fillable = [
-        'agency_id', 'name', 'email', 'password', 'role', 'avatar_path',
+        'agency_id', 
+        'name', 
+        'email', 
+        'password', 
+        'role', 
+        'avatar_path',
+        'two_factor_enabled',
+        'two_factor_code',
+        'two_factor_expires_at',
     ];
 
     protected $hidden = [
@@ -28,6 +36,9 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'two_factor_enabled',
+        'two_factor_code',
+        'two_factor_expires_at',
     ];
 
     public function assignedLeads(): HasMany
