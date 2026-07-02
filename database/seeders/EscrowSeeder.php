@@ -69,7 +69,8 @@ class EscrowSeeder extends Seeder
             'bedrooms'    => 3,
             'baths'       => 2,
             'sqft'        => 2400,
-            'status'      => 'available',
+            'description' => 'Maisonette plot in Milimani, prime residential area.',
+            'status'      => 'Active',
             'created_at'  => now(),
             'updated_at'  => now(),
         ]);
