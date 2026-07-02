@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\v1\AdminPropertyController;
 use App\Http\Controllers\Api\v1\PasswordController;
 use App\Http\Controllers\Api\v1\InternalAiController;
 use App\Http\Controllers\Api\v1\ChatController;
+use App\Http\Controllers\Api\v1\AgentInventoryController;
 
 // Financial Engine Imports
 use App\Http\Controllers\Api\v1\PaymentController;
@@ -177,10 +178,11 @@ Route::prefix('internal/ai')
         
         // Context Queries
         Route::get('/agencies/{agencyId}/leads', [InternalAiController::class, 'getLeads']);
-        Route::get('/agencies/{agencyId}/properties', [InternalAiController::class, 'getProperties']);
+        
+        // Use ONLY ONE route for properties
+        Route::get('/agencies/{agencyId}/properties', [AgentInventoryController::class, 'getProperties']);
 
         // Action Executions
         Route::post('/alerts/property-matches', [AlertController::class, 'storePropertyMatches']);
         Route::post('/properties/scraped', [PropertyController::class, 'storeScrapedProperty']);
-        
     });
