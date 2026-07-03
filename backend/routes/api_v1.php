@@ -117,15 +117,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/history', [PaymentController::class, 'history']); 
     });
 
-    // Escrow Accounts & Milestones Operational Loop
-    Route::prefix('escrows')->group(function () {
-        Route::get('/', [EscrowController::class, 'index']); 
-        Route::post('/', [EscrowController::class, 'store']); 
-        Route::get('/{id}', [EscrowController::class, 'show']); 
-        Route::post('/{id}/milestones', [EscrowController::class, 'addMilestone']); 
-        Route::post('/milestones/{id}/approve', [EscrowController::class, 'approveMilestone']); 
-        Route::post('/{id}/dispute', [EscrowController::class, 'raiseDispute']); 
-    });
+// Escrow Accounts & Milestones Operational Loop
+Route::prefix('escrows')->group(function () {
+    Route::get('/',                          [EscrowController::class, 'index']);
+    Route::post('/',                         [EscrowController::class, 'store']);
+    Route::get('/verify/{reference}',        [EscrowController::class, 'verifyPayment']);
+    Route::post('/deposit', [EscrowController::class, 'initializeDeposit']);
+    Route::get('/{id}',                      [EscrowController::class, 'show']);
+    Route::get('/{id}/timeline',             [EscrowController::class, 'timeline']);
+    Route::post('/{id}/release',             [EscrowController::class, 'release']);
+    Route::post('/{id}/refund',              [EscrowController::class, 'refund']);
+    Route::post('/{id}/request-inspection',  [EscrowController::class, 'requestInspection']);
+    Route::post('/{id}/fund',                [EscrowController::class, 'recordFundingAllocation']);
+    Route::post('/{id}/milestones',          [EscrowController::class, 'addMilestone']);
+    Route::post('/{id}/dispute',             [EscrowController::class, 'raiseDispute']);
+    Route::post('/milestones/{id}/approve',  [EscrowController::class, 'approveMilestone']);
+    
+});
 
     // Vendor Financial Outbound Release Points
     Route::post('/payouts/milestone/{id}/release', [PayoutController::class, 'releaseMilestonePayout']);

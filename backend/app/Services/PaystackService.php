@@ -11,10 +11,10 @@ class PaystackService
     protected $baseUrl;
 
     public function __construct()
-    {
-        $this->secretKey = config('services.paystack.secret_key');
-        $this->baseUrl = config('paystack.payment_url');
-    }
+{
+    $this->secretKey = config('paystack.secret_key');    // ← fix this line
+    $this->baseUrl = config('paystack.payment_url');
+}
 
     /**
      * Initialize a transaction.
@@ -24,7 +24,7 @@ class PaystackService
         $response = Http::withToken($this->secretKey)
             ->post($this->baseUrl . '/transaction/initialize', [
                 'email' => $email,
-                'amount' => $amount * 100, // minor units
+                'amount' => $amount, // minor units
                 'metadata' => $metadata,
                 'callback_url' => $callbackUrl ?? config('paystack.callback_url'),
             ]);
@@ -66,7 +66,7 @@ class PaystackService
         $response = Http::withToken($this->secretKey)
             ->post($this->baseUrl . '/transfer', [
                 'source' => 'balance',
-                'amount' => $amount * 100, // Automatically scaled to minor units (cents/kobo)
+                'amount' => $amount, // Automatically scaled to minor units (cents/kobo)
                 'recipient' => $recipientCode,
                 'reason' => $reason,
             ]);
@@ -87,7 +87,7 @@ class PaystackService
         $response = Http::withToken($this->secretKey)
             ->post($this->baseUrl . '/plan', [
                 'name' => $name,
-                'amount' => $amount * 100,
+                'amount' => $amount,
                 'interval' => $interval,
                 'currency' => 'KES',
             ]);

@@ -20,8 +20,11 @@ class Payment extends Model
         'checkout_request_id',
         'receipt_number',
         'status',
-        'payment_type',        // ✅ ADD THIS (direct, escrow, subscription)
-        'paid_at',             // ✅ ADD THIS
+        'payment_type', 
+        'payment_method',
+        'transaction_reference',
+        'paid_at',  
+        'currency',           // ✅ ADD THIS
     ];
 
     protected $casts = [
@@ -66,7 +69,7 @@ class Payment extends Model
         return $this->status === 'failed';
     }
 
-    public function markAsCompleted(string $receiptNumber = null): void
+    public function markAsCompleted(?string $receiptNumber = null): void
     {
         $this->update([
             'status' => 'completed',
