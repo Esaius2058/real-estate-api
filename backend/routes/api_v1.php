@@ -16,6 +16,9 @@ use App\Http\Controllers\Api\v1\PasswordController;
 use App\Http\Controllers\Api\v1\InternalAiController;
 use App\Http\Controllers\Api\v1\ChatController;
 use App\Http\Controllers\Api\v1\AgentInventoryController;
+use App\Http\Controllers\Api\v1\TwoFactorController;
+use App\Http\Controllers\Api\v1\AlertController;
+use App\Http\Controllers\Api\v1\OtpAuthController;
 
 // Financial Engine Imports
 use App\Http\Controllers\Api\v1\PaymentController;
@@ -29,6 +32,12 @@ use App\Http\Middleware\VerifyM2MToken;
 
 Route::post('/login', [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+
+// ── GUEST / PUBLIC AUTHENTICATION ROUTES ──
+Route::prefix('auth/otp')->group(function () {
+    Route::post('/request', [OtpAuthController::class, 'requestOtp']);
+    Route::post('/verify', [OtpAuthController::class, 'verifyOtp']);
+});
 
 // Public Password Recovery Flows
 Route::post('/password/forgot', [PasswordController::class, 'sendResetCode']); 
@@ -84,6 +93,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/join', [AgencyController::class, 'join']);
         Route::get('/', [AgencyController::class, 'show']);
         Route::put('/{agency}', [AgencyController::class, 'update']);
+    });
+
+    // ── 2FA SETTINGS ROUTES ──
+    Route::prefix('settings/2fa')->group(function () {
+        Route::post('/request', [TwoFactorController::class, 'requestEnable']);
+        Route::post('/enable', [TwoFactorController::class, 'confirmEnable']);
+        Route::post('/disable', [TwoFactorController::class, 'disable']);
     });
 
     // Dynamic SaaS Subscription Systems
