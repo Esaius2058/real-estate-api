@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Property;
+use App\Http\Requests\Property\StorePropertyRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
@@ -27,8 +28,52 @@ class AdminPropertyController extends Controller
         });
 
         return response()->json($properties);
-        // Add this to AdminPropertyController@index
-\Log::info("Admin Agency ID: " . auth()->user()->agency_id);
+    }
+
+    /**
+     * Create a new property listing (admin override).
+     */
+    public function store(StorePropertyRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+        $user = auth()->user();
+
+        // Normalise status: map lowercase/snake_case to Title Case
+        if (isset($validated['status'])) {
+            $statusMap = [
+                'active' => 'Active',
+                'under_contract' => 'Under Contract',
+                'closed' => 'Closed',
+                'expired' => 'Expired',
+                'Active' => 'Active',
+                'Under Contract' => 'Under Contract',
+                'Closed' => 'Closed',
+                'Expired' => 'Expired',
+            ];
+            $validated['status'] = $statusMap[$validated['status']] ?? 'Active';
+        }
+
+        // Force ownership IDs
+        $validated['agency_id'] = $user->agency_id;
+        $validated['user_id'] = $user->id;
+
+        if (empty($validated['amenities'])) {
+            $validated['amenities'] = [];
+        }
+
+        $property = Property::create($validated);
+
+        // Handle base64 images if provided
+        if (!empty($validated['images']) && is_array($validated['images'])) {
+            foreach ($validated['images'] as $base64Image) {
+                $this->saveBase64Image($property, $base64Image);
+            }
+        }
+
+        // Invalidate caches
+        $this->invalidateAgencyCaches($user->agency_id);
+
+        return response()->json(['data' => $property], 201);
     }
 
     /**
@@ -54,52 +99,75 @@ class AdminPropertyController extends Controller
     /**
      * Delete a property and its related records.
      */
- public function destroy($id): JsonResponse
-{
-    
-    $property = Property::withTrashed()->find($id);
-    if (!$property) return response()->json(['message' => 'Not found'], 404);
-    
-    // This assumes you added SoftDeletes trait to your Property model
-    $property->delete(); 
-    $this->invalidateAgencyCaches(auth()->user()->agency_id);
-    return response()->json(['message' => 'Property moved to trash.']);
-}
-
-// 2. Permanent Delete (Wipe Data)
-public function forceDestroy($id): JsonResponse
-{
-    // 1. Find the property
-    $property = Property::withoutGlobalScope(\App\Scopes\AgencyScope::class)
-                        ->withTrashed()
-                        ->find($id);
-
-    if (!$property) return response()->json(['message' => 'Not found'], 404);
-
-   
-
-    \Log::info("FORCE DESTROY: Policy bypassed, proceeding with deletion.");
-
-    if ($property->images) {
-        $property->images()->forceDelete();
+    public function destroy($id): JsonResponse
+    {
+        $property = Property::withTrashed()->find($id);
+        if (!$property) return response()->json(['message' => 'Not found'], 404);
+        
+        $property->delete(); 
+        $this->invalidateAgencyCaches(auth()->user()->agency_id);
+        return response()->json(['message' => 'Property moved to trash.']);
     }
 
-    // 2. Perform permanent deletion
-    $property->forceDelete();
-    
-    $this->invalidateAgencyCaches(auth()->user()->agency_id);
-    return response()->json(['message' => 'Property permanently removed.']);
-}
-     
-private function invalidateAgencyCaches($agencyId): void
-{
-    // Clear specific property pages
-    for ($page = 1; $page <= 20; $page++) {
-        Cache::forget("admin_agency_{$agencyId}_properties_page_{$page}");
+    /**
+     * Permanent Delete (Wipe Data)
+     */
+    public function forceDestroy($id): JsonResponse
+    {
+        $property = Property::withoutGlobalScope(\App\Scopes\AgencyScope::class)
+                            ->withTrashed()
+                            ->find($id);
+
+        if (!$property) return response()->json(['message' => 'Not found'], 404);
+
+        \Log::info("FORCE DESTROY: Policy bypassed, proceeding with deletion.");
+
+        if ($property->images) {
+            $property->images()->forceDelete();
+        }
+
+        $property->forceDelete();
+        
+        $this->invalidateAgencyCaches(auth()->user()->agency_id);
+        return response()->json(['message' => 'Property permanently removed.']);
     }
-    
-    // If you use Tags (if your cache driver supports it, like Redis/Memcached), 
-    // it's much better:
-    // Cache::tags(['properties', "agency_{$agencyId}"])->flush();
+
+    /**
+     * Save a base64-encoded image as a property image record.
+     */
+    private function saveBase64Image(Property $property, string $base64String): void
+    {
+        // Strip data URI prefix if present (e.g. "data:image/png;base64,iVBOR...")
+        if (str_contains($base64String, 'base64,')) {
+            $base64String = substr($base64String, strpos($base64String, 'base64,') + 7);
+        }
+
+        $imageData = base64_decode($base64String);
+        if ($imageData === false) {
+            return;
+        }
+
+        // Generate a unique filename
+        $filename = 'properties/' . $property->id . '/' . uniqid() . '.jpg';
+        
+        try {
+            \Illuminate\Support\Facades\Storage::disk('s3')->put($filename, $imageData, 'public');
+            $path = $filename;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $imageData);
+            $path = $filename;
+        }
+
+        $property->images()->create([
+            's3_path' => $path,
+            'is_primary' => $property->images()->count() === 0,
+        ]);
+    }
+      
+    private function invalidateAgencyCaches($agencyId): void
+    {
+        for ($page = 1; $page <= 20; $page++) {
+            Cache::forget("admin_agency_{$agencyId}_properties_page_{$page}");
+        }
+    }
 }
-} 

@@ -29,7 +29,12 @@ class StorePropertyRequest extends FormRequest
         'baths'       => 'required|integer|min:0',
         'sqft'        => 'required|integer|min:0',
         'description' => 'required|string',
-        'status'      => ['required', \Illuminate\Validation\Rule::in(['Active', 'Under Contract', 'Closed', 'Expired'])], 
+        // Accept any string status; the controller normalises it to the correct ENUM value
+        'status'      => 'required|string', 
+        'images'      => 'sometimes|array',
+        'images.*'    => 'string', // base64 encoded image strings
+        'amenities'   => 'sometimes|array',
+        'amenities.*' => 'string|max:255',
     ];
 }
 }

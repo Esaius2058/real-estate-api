@@ -53,11 +53,38 @@ class PropertyController extends Controller
         $validated = $request->validated();
         $user = auth()->user();
 
+        // Normalise status: map lowercase/snake_case to Title Case (e.g. "active" → "Active", "under_contract" → "Under Contract")
+        if (isset($validated['status'])) {
+            $statusMap = [
+                'active'         => 'Active',
+                'under_contract' => 'Under Contract',
+                'closed'         => 'Closed',
+                'expired'        => 'Expired',
+                'Active'         => 'Active',
+                'Under Contract' => 'Under Contract',
+                'Closed'         => 'Closed',
+                'Expired'        => 'Expired',
+            ];
+            $validated['status'] = $statusMap[$validated['status']] ?? 'Active';
+        }
+
         // Strip and force secure ownership IDs
         $validated['agency_id'] = $user->agency_id;
-        $validated['user_id'] = $user->id; 
+        $validated['user_id'] = $user->id;
+
+        // Ensure amenities is always an array for JSON cast
+        if (empty($validated['amenities'])) {
+            $validated['amenities'] = [];
+        }
 
         $property = Property::create($validated);
+
+        // Handle base64 images if provided
+        if (!empty($validated['images']) && is_array($validated['images'])) {
+            foreach ($validated['images'] as $base64Image) {
+                $this->saveBase64Image($property, $base64Image);
+            }
+        }
 
         // Invalidate caches
         Cache::forget("agency_{$user->agency_id}_user_{$user->id}_properties_page_1");
@@ -135,5 +162,41 @@ class PropertyController extends Controller
         $property->delete();
 
         return response()->json(['message' => 'Property deleted.'], 200);
+    }
+
+    /**
+     * Save a base64-encoded image as a property image record.
+     * Stores images in local storage as a fallback, or uses S3 if configured.
+     */
+    private function saveBase64Image(Property $property, string $base64String): void
+    {
+        // Strip data URI prefix if present (e.g. "data:image/png;base64,iVBOR...")
+        if (str_contains($base64String, 'base64,')) {
+            $base64String = substr($base64String, strpos($base64String, 'base64,') + 7);
+        }
+
+        $imageData = base64_decode($base64String);
+        if ($imageData === false) {
+            return;
+        }
+
+        // Generate a unique filename
+        $filename = 'properties/' . $property->id . '/' . uniqid() . '.jpg';
+        
+        try {
+            // Try storing on S3 first
+            \Illuminate\Support\Facades\Storage::disk('s3')->put($filename, $imageData, 'public');
+            $path = $filename;
+        } catch (\Exception $e) {
+            // Fallback: store on local disk
+            \Illuminate\Support\Facades\Storage::disk('public')->put($filename, $imageData);
+            $path = $filename;
+        }
+
+        // Create the property image record
+        $property->images()->create([
+            's3_path' => $path,
+            'is_primary' => $property->images()->count() === 0, // First image is primary
+        ]);
     }
 }

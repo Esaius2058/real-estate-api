@@ -103,23 +103,22 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/payments/stk-push', [PaymentController::class, 'stkPush']);
     Route::get('/payments/status/{checkoutRequestID}', [PaymentController::class, 'checkStatus']);
 
-// Escrow Accounts & Milestones Operational Loop
-Route::prefix('escrows')->group(function () {
-    Route::get('/',                          [EscrowController::class, 'index']);
-    Route::post('/',                         [EscrowController::class, 'store']);
-    Route::get('/verify/{reference}',        [EscrowController::class, 'verifyPayment']);
-    Route::post('/deposit', [EscrowController::class, 'initializeDeposit']);
-    Route::get('/{id}',                      [EscrowController::class, 'show']);
-    Route::get('/{id}/timeline',             [EscrowController::class, 'timeline']);
-    Route::post('/{id}/release',             [EscrowController::class, 'release']);
-    Route::post('/{id}/refund',              [EscrowController::class, 'refund']);
-    Route::post('/{id}/request-inspection',  [EscrowController::class, 'requestInspection']);
-    Route::post('/{id}/fund',                [EscrowController::class, 'recordFundingAllocation']);
-    Route::post('/{id}/milestones',          [EscrowController::class, 'addMilestone']);
-    Route::post('/{id}/dispute',             [EscrowController::class, 'raiseDispute']);
-    Route::post('/milestones/{id}/approve',  [EscrowController::class, 'approveMilestone']);
-    
-});
+    // Escrow Accounts & Milestones Operational Loop
+    Route::prefix('escrows')->group(function () {
+        Route::get('/',                          [EscrowController::class, 'index']);
+        Route::post('/',                         [EscrowController::class, 'store']);
+        Route::get('/verify/{reference}',        [EscrowController::class, 'verifyPayment']);
+        Route::post('/deposit', [EscrowController::class, 'initializeDeposit']);
+        Route::get('/{id}',                      [EscrowController::class, 'show']);
+        Route::get('/{id}/timeline',             [EscrowController::class, 'timeline']);
+        Route::post('/{id}/release',             [EscrowController::class, 'release']);
+        Route::post('/{id}/refund',              [EscrowController::class, 'refund']);
+        Route::post('/{id}/request-inspection',  [EscrowController::class, 'requestInspection']);
+        Route::post('/{id}/fund',                [EscrowController::class, 'recordFundingAllocation']);
+        Route::post('/{id}/milestones',          [EscrowController::class, 'addMilestone']);
+        Route::post('/{id}/dispute',             [EscrowController::class, 'raiseDispute']);
+        Route::post('/milestones/{id}/approve',  [EscrowController::class, 'approveMilestone']);
+    });
 
     // Vendor Financial Outbound Release Points
     Route::post('/payouts/milestone/{id}/release', [PayoutController::class, 'releaseMilestonePayout']);
@@ -141,7 +140,8 @@ Route::prefix('escrows')->group(function () {
         Route::get('/agent/properties', [PropertyController::class, 'agencyIndex']);
         Route::get('/agent/properties/{property}', [PropertyController::class, 'show']);
 
-        // Property Mutations
+        // Property Mutations (FIXED: Added '/agent/properties' route for creation payload)
+        Route::post('/agent/properties', [PropertyController::class, 'store']);
         Route::post('/properties', [PropertyController::class, 'store']);
         Route::put('/properties/{property}', [PropertyController::class, 'update']);
         Route::delete('/properties/{property}', [PropertyController::class, 'destroy']);
@@ -165,8 +165,9 @@ Route::prefix('escrows')->group(function () {
         // KYC / Secure Document Approval Queue
         Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
         
-        // Admin Property Controls (Listing Verification & Purges)
+        // Admin Property Controls (Listing Verification, Creation & Purges)
         Route::get('/admin/properties', [AdminPropertyController::class, 'index']);
+        Route::post('/admin/properties', [AdminPropertyController::class, 'store']);
         Route::patch('/admin/properties/{property}/status', [AdminPropertyController::class, 'updateStatus']);
         Route::delete('/admin/properties/{id}', [AdminPropertyController::class, 'destroy']);
         Route::delete('/admin/properties/{id}/permanent', [AdminPropertyController::class, 'forceDestroy']);

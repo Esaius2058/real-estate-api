@@ -30,7 +30,8 @@ class Property extends Model
         'sqft',
         'description',
         'status',
-        'contract_end_date'
+        'contract_end_date',
+        'amenities'
     ];
 
     protected static function booted(): void
