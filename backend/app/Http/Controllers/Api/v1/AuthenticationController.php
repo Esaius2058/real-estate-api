@@ -98,6 +98,7 @@ class AuthenticationController extends Controller
                 'name'      => $user->name,
                 'role'      => $user->role,
                 'agency_id' => $user->agency_id,
+                'two_factor_enabled' => $user->two_factor_enabled,
             ],
             'profile' => [
                 'id'       => $user->id,

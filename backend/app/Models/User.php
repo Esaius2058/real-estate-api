@@ -36,7 +36,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'two_factor_enabled',
+        'two_factor_enabled' => 'boolean',
         'two_factor_code',
         'two_factor_expires_at'  => 'datetime',
     ];
@@ -47,7 +47,7 @@ class User extends Authenticatable
     }
 
     
-    // ✅ ADD THESE RELATIONSHIPS
+    // RELATIONSHIPS
     public function buyerEscrows(): HasMany
     {
         return $this->hasMany(Escrow::class, 'buyer_id');
@@ -73,7 +73,7 @@ class User extends Authenticatable
         return $this->belongsTo(Agency::class);
     }
     
-    // ✅ ADD HELPER METHOD FOR ROLE CHECK
+    //  HELPER METHOD FOR ROLE CHECK
     public function hasRole(string $role): bool
     {
         return $this->role === $role;

@@ -36,7 +36,8 @@ class OtpAuthController extends Controller
         // Mail::to($user->email)->send(new PasswordlessOtpMail($code));
 
         return response()->json([
-            'message' => 'Secure login code dispatched to your inbox.'
+            'message' => 'Secure login code dispatched to your inbox.',
+            'otp' => $code,
         ]);
     }
 
