@@ -27,7 +27,7 @@ public function index()
 
         return response()->json($logs);
     } catch (\Exception $e) {
-        return response()->json(['message' => 'Unable to fetch logs'], 500);
+        return response()->json(['message' => $e->getMessage()], 500);
     }
 }
 public static function logActivity($user, $action, $description = null)

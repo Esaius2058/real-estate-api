@@ -21,6 +21,10 @@ use App\Http\Controllers\Api\v1\SessionController;
 use App\Http\Controllers\Api\v1\AlertController;
 use App\Http\Controllers\Api\v1\AdminDashboardController;
 use App\Http\Controllers\Api\v1\DashboardController;
+use App\Http\Controllers\Api\v1\OtpAuthController;
+use App\Http\Controllers\Api\v1\TwoFactorController;
+use App\Http\Controllers\Api\v1\InternalAiController;
+use App\Http\Controllers\Api\v1\AgentInventoryController;
 
 // Financial Engine Imports
 use App\Http\Controllers\Api\v1\PaymentController;
@@ -40,6 +44,12 @@ use App\Http\Middleware\VerifyM2MToken;
 
 Route::post('/login',    [AuthenticationController::class, 'login']);
 Route::post('/register', [AuthenticationController::class, 'register']);
+
+// ── GUEST / PUBLIC AUTHENTICATION ROUTES ──
+Route::prefix('auth/otp')->group(function () {
+    Route::post('/request', [OtpAuthController::class, 'requestOtp']);
+    Route::post('/verify',  [OtpAuthController::class, 'verifyOtp']);
+});
 
 // Password recovery
 Route::post('/password/forgot', [PasswordController::class, 'sendResetCode']);
@@ -81,11 +91,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me/notifications',      [AlertController::class, 'index']);
     Route::post('/me/notifications/read',[AlertController::class, 'markAsRead']);
 
-    // 2FA settings
+    // ── 2FA SETTINGS ROUTES ──
     Route::prefix('settings/2fa')->group(function () {
-        Route::post('/enable',  [\App\Http\Controllers\Api\v1\TwoFactorController::class, 'enable']);
-        Route::post('/disable', [\App\Http\Controllers\Api\v1\TwoFactorController::class, 'disable']);
-        Route::post('/verify',  [\App\Http\Controllers\Api\v1\TwoFactorController::class, 'verify']);
+        Route::post('/request', [TwoFactorController::class, 'requestEnable']);
+        Route::post('/enable',  [TwoFactorController::class, 'confirmEnable']);
+        Route::post('/disable', [TwoFactorController::class, 'disable']);
     });
 
     // Dashboard
@@ -126,14 +136,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/history',                  [PaymentController::class, 'history']);
     });
 
-    // Escrow
+    // Escrow Accounts & Milestones Operational Loop
     Route::prefix('escrows')->group(function () {
         Route::get('/',                          [EscrowController::class, 'index']);
         Route::post('/',                         [EscrowController::class, 'store']);
+        Route::get('/verify/{reference}',        [EscrowController::class, 'verifyPayment']);
+        Route::post('/deposit',                  [EscrowController::class, 'initializeDeposit']);
         Route::get('/{id}',                      [EscrowController::class, 'show']);
+        Route::get('/{id}/timeline',             [EscrowController::class, 'timeline']);
+        Route::post('/{id}/release',             [EscrowController::class, 'release']);
+        Route::post('/{id}/refund',              [EscrowController::class, 'refund']);
+        Route::post('/{id}/request-inspection',  [EscrowController::class, 'requestInspection']);
+        Route::post('/{id}/fund',                [EscrowController::class, 'recordFundingAllocation']);
         Route::post('/{id}/milestones',          [EscrowController::class, 'addMilestone']);
-        Route::post('/milestones/{id}/approve',  [EscrowController::class, 'approveMilestone']);
         Route::post('/{id}/dispute',             [EscrowController::class, 'raiseDispute']);
+        Route::post('/milestones/{id}/approve',  [EscrowController::class, 'approveMilestone']);
     });
 
     // Payouts
@@ -173,13 +190,13 @@ Route::middleware('auth:sanctum')->group(function () {
         // Agent management
         Route::apiResource('/agents', AgentController::class)->except(['create', 'edit', 'show']);
 
-        // User management (Trevor's branch)
+        // User management
         Route::get('/admin/users',                 [AdminDashboardController::class, 'getUsers']);
         Route::post('/admin/users',                [UserController::class, 'store']);
         Route::delete('/admin/users/{id}',         [UserController::class, 'destroy']);
         Route::patch('/admin/users/{id}/access',   [UserController::class, 'updateAccess']);
 
-        // Activity logs & sessions (Trevor's branch)
+        // Activity logs & sessions
         Route::get('/admin/logs',                  [LogController::class, 'index']);
 
         // Dashboard & disputes
@@ -205,22 +222,14 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::prefix('internal/ai')
     ->middleware(VerifyM2MToken::class)
     ->group(function () {
+        
+        // Context Queries
+        Route::get('/agencies/{agencyId}/leads', [InternalAiController::class, 'getLeads']);
+        
+        // Use ONLY ONE route for properties
+        Route::get('/agencies/{agencyId}/properties', [AgentInventoryController::class, 'getProperties']);
 
-        Route::get('/agencies/{agencyId}/leads', function ($agencyId) {
-            $leads = \App\Models\Lead::withoutGlobalScopes()
-                ->where('agency_id', $agencyId)
-                ->where('kanban_stage', 'new')
-                ->get();
-            return response()->json(['data' => $leads]);
-        });
-
-        Route::get('/agencies/{agencyId}/properties', function ($agencyId) {
-            $properties = \App\Models\Property::withoutGlobalScopes()
-                ->where('agency_id', $agencyId)
-                ->whereIn('status', ['active', 'active_listing'])
-                ->get();
-            return response()->json(['data' => $properties]);
-        });
-
+        // Action Executions
         Route::post('/alerts/property-matches', [AlertController::class, 'storePropertyMatches']);
+        Route::post('/properties/scraped', [PropertyController::class, 'storeScrapedProperty']);
     });
