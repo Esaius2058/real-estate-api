@@ -18,7 +18,9 @@ use App\Http\Controllers\Api\v1\PaymentController;
 use App\Http\Controllers\Api\v1\SubscriptionController;
 use App\Http\Controllers\Api\v1\EscrowController;
 use App\Http\Controllers\Api\v1\AdminDashboardController;
+use App\Http\Controllers\Api\v1\AdminEscrowController;
 use App\Http\Controllers\Api\v1\PayoutController;
+use App\Http\Controllers\Api\v1\AdminTransactionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,7 +42,7 @@ Route::post('/properties/shares/sign-images', [PropertyController::class, 'gener
 
 // Inbound Automated Financial Webhooks 
 Route::post('/payments/callback', [PaymentController::class, 'callback']); // Safaricom Daraja STK Push Callback Engine
-Route::post('/paystack/webhook', [SubscriptionController::class, 'webhook']); // Paystack Event Webhook Handler
+Route::post('/paystack/webhook', [PaymentController::class, 'paystackWebhook']); // Paystack Event Webhook Handler
 Route::get('/paystack/callback', [PaymentController::class, 'verifyPaystack']); // Paystack Frontend Redirect Callback Verify Endpoint
 
 Route::prefix('payouts')->group(function () {
@@ -89,8 +91,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Dynamic SaaS Subscription Systems
     Route::prefix('subscriptions')->group(function () {
         Route::get('/tiers', [SubscriptionController::class, 'getTiers']);
-        Route::post('/subscribe', [SubscriptionController::class, 'subscribe']);
+        Route::post('/subscribe-mpesa', [SubscriptionController::class, 'subscribeMpesa']);
         Route::get('/current', [SubscriptionController::class, 'mySubscription']);
+        
     });
 
     // Transaction & Payment Pipelines (M-Pesa / Card Processing)
@@ -125,10 +128,20 @@ Route::prefix('escrows')->group(function () {
     Route::post('/payouts/milestone/{id}/release', [PayoutController::class, 'releaseMilestonePayout']);
 
     // Back-Office Mediation & Administration Workspace
-    Route::prefix('admin')->middleware('can:manage-system')->group(function () {
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('/dashboard/metrics', [AdminDashboardController::class, 'metrics']); 
+        Route::get('/financials', [AdminDashboardController::class, 'metrics']); 
         Route::get('/disputes', [AdminDashboardController::class, 'disputes']); 
         Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']); 
+
+        // Admin escrow oversight — view all escrows/disputes, resolve disputes
+        Route::get('/escrows', [AdminEscrowController::class, 'index']);
+        Route::post('/escrows/disputes/{id}/resolve', [AdminEscrowController::class, 'resolveDispute']);
+
+        // Transactions management routes
+        Route::get('/transactions', [AdminTransactionController::class, 'index']);
+        Route::get('/transactions/export', [AdminTransactionController::class, 'export']);
+        Route::patch('/transactions/{payment}/status', [AdminTransactionController::class, 'updateStatus']);
     });
 
     // =========================================================================
@@ -164,7 +177,7 @@ Route::prefix('escrows')->group(function () {
 
         // KYC / Secure Document Approval Queue
         Route::patch('/vault/documents/{document}/status', [VaultDocumentController::class, 'updateStatus']);
-        
+
         // Admin Property Controls (Listing Verification & Purges)
         Route::get('/admin/properties', [AdminPropertyController::class, 'index']);
         Route::patch('/admin/properties/{property}/status', [AdminPropertyController::class, 'updateStatus']);

@@ -34,7 +34,6 @@ class Escrow extends Model
     ];
 
     // ─── Relationships ────────────────────────────────────────────
-
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
@@ -71,7 +70,6 @@ class Escrow extends Model
     }
 
     // ─── Computed Attributes ──────────────────────────────────────
-
     public function getProgressAttribute(): float
     {
         $totalPaid = $this->payments()->where('status', 'completed')->sum('amount');
@@ -95,7 +93,6 @@ class Escrow extends Model
     }
 
     // ─── Business Logic ───────────────────────────────────────────
-
     public function isFullyFunded(): bool
     {
         return $this->getTotalPaidAttribute() >= $this->amount;
@@ -109,5 +106,15 @@ class Escrow extends Model
                 'funded_at' => now(),
             ]);
         }
+    }
+
+    /**
+     * Called by PaymentController::updateEscrowProgress() after any escrow
+     * payment (M-Pesa or Paystack) is marked completed.
+     */
+    public function applyPayment(): void
+    {
+        $this->refresh();
+        $this->markAsFunded();
     }
 }

@@ -50,8 +50,22 @@ class PropertyController extends Controller
 
     public function store(StorePropertyRequest $request): JsonResponse
     {
-        $validated = $request->validated();
         $user = auth()->user();
+
+        // Enforce the agency's subscription tier listing cap before creating
+        // anything. Counts ALL properties for the agency, not just this
+        // user's, since the subscription is shared across the whole team.
+        $currentCount = Property::where('agency_id', $user->agency_id)->count();
+        $limit = $user->propertyLimit();
+
+        if ($currentCount >= $limit) {
+            return response()->json([
+                'success' => false,
+                'message' => "Your agency has reached its plan limit of {$limit} listings. Upgrade your subscription to add more.",
+            ], 403);
+        }
+
+        $validated = $request->validated();
 
         // Strip and force secure ownership IDs
         $validated['agency_id'] = $user->agency_id;

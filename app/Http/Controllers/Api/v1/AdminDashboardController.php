@@ -12,14 +12,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Exception;
 
+use App\Services\PaystackService;
+
 class AdminDashboardController extends Controller
 {
-    protected $paystack;
+    protected PaystackService $paystack;
 
     /**
      * Map controller runtime onto the primary system payment infrastructure driver.
      */
-    public function __construct($paystack)
+    public function __construct(PaystackService $paystack)
     {
         $this->paystack = $paystack;
     }
@@ -27,32 +29,121 @@ class AdminDashboardController extends Controller
     public function metrics()
     {
         try {
-            $totalVolume = Escrow::whereIn('status', ['funded', 'inspection', 'closing', 'completed'])->sum('amount');
-            $activeEscrows = Escrow::whereIn('status', ['funded', 'inspection', 'closing'])->count();
-            $pendingDisputes = EscrowDispute::where('status', 'pending')->count();
-            
-            $saasRevenue = Payment::where('payment_method', 'paystack_card')
-                ->where('status', 'completed')
-                ->whereHas('user', function($q) {
-                    $q->whereExists(function($sub) {
-                        $sub->select(DB::raw(1))
-                            ->from('subscriptions')
-                            ->whereRaw('subscriptions.subscribable_id = users.id');
-                    });
-                })->sum('amount');
+            // total_revenue
+            $totalRevenue = (float) Payment::where('status', 'completed')->sum('amount');
+
+            // subscription_revenue
+            $subscriptionRevenue = (float) Payment::where('status', 'completed')
+                ->where('payment_type', 'subscription')
+                ->sum('amount');
+
+            // escrow_revenue
+            $escrowRevenue = (float) Payment::where('status', 'completed')
+                ->where('payment_type', 'escrow')
+                ->sum('amount');
+
+            // mrr calculation
+            $activeSubs = \App\Models\Subscription::with('tier')
+                ->where('status', 'active')
+                ->where('ends_at', '>', now())
+                ->get();
+            $mrr = 0.0;
+            foreach ($activeSubs as $sub) {
+                if (!$sub->tier) continue;
+                if ($sub->billing_cycle === 'yearly') {
+                    $mrr += $sub->tier->yearly_price / 12;
+                } else {
+                    $mrr += $sub->tier->monthly_price;
+                }
+            }
+
+            // active_subscriber_count
+            $activeSubscriberCount = \App\Models\Subscription::where('status', 'active')
+                ->where('ends_at', '>', now())
+                ->count();
+
+            // total_escrow_held (status = funded, inspection, closing)
+            $totalEscrowHeld = (float) Escrow::whereIn('status', ['funded', 'inspection', 'closing'])->sum('amount');
+
+            // total_escrow_released
+            $totalEscrowReleased = (float) Escrow::where('status', 'completed')->sum('amount');
+
+            // active_escrow_contracts
+            $activeEscrowContracts = Escrow::whereIn('status', ['funded', 'inspection', 'closing'])->count();
+
+            // pending_disputes_count
+            $pendingDisputesCount = EscrowDispute::where('status', 'pending')->count();
+
+            // revenue_by_tier (grouped)
+            $revenueByTier = Payment::where('payment_type', 'subscription')
+                ->where('payments.status', 'completed')
+                ->join('subscriptions', 'payments.subscription_id', '=', 'subscriptions.id')
+                ->join('subscription_tiers', 'subscriptions.tier_id', '=', 'subscription_tiers.id')
+                ->select('subscription_tiers.name', DB::raw('SUM(payments.amount) as total_revenue'))
+                ->groupBy('subscription_tiers.name')
+                ->get()
+                ->pluck('total_revenue', 'name')
+                ->toArray();
+
+            // gateway_stats (success/fail/pending counts + rate per payment_method)
+            $gatewayRaw = Payment::select('payment_method', 'status', DB::raw('count(*) as count'))
+                ->groupBy('payment_method', 'status')
+                ->get();
+
+            $gatewayStats = [];
+            foreach ($gatewayRaw as $row) {
+                $method = $row->payment_method ?? 'unknown';
+                $status = $row->status;
+                $count = (int)$row->count;
+
+                if (!isset($gatewayStats[$method])) {
+                    $gatewayStats[$method] = [
+                        'completed' => 0,
+                        'failed' => 0,
+                        'pending' => 0,
+                        'total' => 0,
+                        'success_rate' => 0.0,
+                    ];
+                }
+
+                if (in_array($status, ['completed', 'failed', 'pending'])) {
+                    $gatewayStats[$method][$status] = $count;
+                }
+                $gatewayStats[$method]['total'] += $count;
+            }
+
+            foreach ($gatewayStats as $method => &$stats) {
+                if ($stats['total'] > 0) {
+                    $stats['success_rate'] = round(($stats['completed'] / $stats['total']) * 100, 2);
+                }
+            }
+
+            // Fetch pending disputes for the admin dashboard frontend component compatibility
+            $disputes = EscrowDispute::with(['escrow.buyer', 'escrow.seller', 'raisedBy'])
+                ->where('status', 'pending')
+                ->get();
 
             return response()->json([
-                'metrics' => [
-                    'total_escrow_volume' => (float)$totalVolume,
-                    'active_escrow_contracts' => $activeEscrows,
-                    'pending_disputes_count' => $pendingDisputes,
-                    'saas_recurring_revenue' => (float)$saasRevenue,
-                ],
-                'recent_transactions' => Payment::with('user')->latest()->take(5)->get()
+                'total_revenue' => $totalRevenue,
+                'subscription_revenue' => $subscriptionRevenue,
+                'escrow_revenue' => $escrowRevenue,
+                'mrr' => $mrr,
+                'active_subscriber_count' => $activeSubscriberCount,
+                'total_escrow_held' => $totalEscrowHeld,
+                'total_escrow_released' => $totalEscrowReleased,
+                'active_escrow_contracts' => $activeEscrowContracts,
+                'pending_disputes_count' => $pendingDisputesCount,
+                'revenue_by_tier' => $revenueByTier,
+                'gateway_stats' => $gatewayStats,
+
+                // Frontend compatibility mapping keys
+                'total_locked_volume' => $totalEscrowHeld,
+                'disputes_count' => $pendingDisputesCount,
+                'disputes' => $disputes,
             ]);
         } catch (Exception $e) {
             Log::error('Admin analytics calculation engine failure', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Analytics processing failure'], 500);
+            return response()->json(['message' => 'Analytics processing failure: ' . $e->getMessage()], 500);
         }
     }
 

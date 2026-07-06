@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Subscription;
 
-
 class User extends Authenticatable
 {
     use HasApiTokens, Notifiable, BelongsToAgency;
@@ -34,65 +33,76 @@ class User extends Authenticatable
         return $this->hasMany(Lead::class, 'agent_id');
     }
 
-    
-    // ✅ ADD THESE RELATIONSHIPS
     public function buyerEscrows(): HasMany
     {
         return $this->hasMany(Escrow::class, 'buyer_id');
     }
-    
+
     public function sellerEscrows(): HasMany
     {
         return $this->hasMany(Escrow::class, 'seller_id');
     }
-    
+
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
     }
-    
+
     public function properties(): HasMany
     {
         return $this->hasMany(Property::class);
     }
-    
+
     public function agency(): BelongsTo
     {
         return $this->belongsTo(Agency::class);
     }
-    
-    // ✅ ADD HELPER METHOD FOR ROLE CHECK
+
     public function hasRole(string $role): bool
     {
         return $this->role === $role;
     }
-    
+
     public function isAdmin(): bool
     {
         return in_array($this->role, ['admin', 'Admin']);
     }
-    
+
     public function isAgent(): bool
     {
         return $this->role === 'agent';
     }
-    
+
     public function isBroker(): bool
     {
         return $this->role === 'broker';
     }
 
-    public function subscriptions()
+    /**
+     * Subscriptions belong to the Agency, not the individual User.
+     * These delegate through so existing call sites like
+     * $user->activeSubscription() keep working without changes elsewhere.
+     * NOTE: unlike the old version, this now returns a Subscription|null
+     * directly (not a relation builder) since it's just proxying the
+     * agency's own relation.
+     */
+    public function activeSubscription(): ?Subscription
     {
-        return $this->morphMany(Subscription::class, 'subscribable');
+        return $this->agency?->activeSubscription()->first();
     }
 
-    public function activeSubscription()
+    public function currentTier(): ?SubscriptionTier
     {
-        return $this->morphOne(Subscription::class, 'subscribable')
-                    ->where('status', 'active')
-                    ->where('ends_at', '>', now())
-                    ->latest();
+        return $this->agency?->currentTier();
+    }
+
+    public function hasFeature(string $key): bool
+    {
+        return $this->agency?->hasFeature($key) ?? false;
+    }
+
+    public function propertyLimit(): int
+    {
+        return $this->agency?->propertyLimit() ?? 3;
     }
 }
-

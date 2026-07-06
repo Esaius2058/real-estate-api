@@ -9,9 +9,11 @@ class SubscriptionTier extends Model
     protected $fillable = [
         'name', 
         'slug', 
-        'price_monthly', 
         'max_properties', 
-        'features'
+        'features',
+        'monthly_price',
+        'yearly_price',
+        'is_active',
     ];
 
     protected $casts = [
