@@ -125,6 +125,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/dashboard-hub', [AdminDashboardController::class, 'dashboardHub']);
   Route::get('/agencies', [AdminAgencyController::class, 'index']);
   Route::get('/agencies/{id}', [AdminAgencyController::class, 'show']);
+  Route::get('/leads', [AdminDashboardController::class, 'globalLeads']);
     
     Route::get('/disputes', [AdminDashboardController::class, 'disputes']);
     Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']);

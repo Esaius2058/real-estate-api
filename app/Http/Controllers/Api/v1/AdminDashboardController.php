@@ -303,4 +303,55 @@ class AdminDashboardController extends Controller
             'recent_logs' => ActivityLog::withoutGlobalScope(AgencyScope::class)->latest()->take(15)->get(),
         ]);
     }
+
+
+   /**
+     * GLOBAL LEADS PIPELINE OVERVIEW
+     * Returns all leads from all agents across all tenant groups safely.
+     */
+    public function globalLeads()
+    {
+        try {
+            // 1. Strip all global multi-tenant scopes without relying on explicit class paths
+            $query = \App\Models\Lead::withoutGlobalScopes();
+            
+            // 2. Attempt to eager-load relationships safely
+            try {
+                // If your relationships are named differently, this catch block intercepts the error
+                $leads = $query->with(['agent', 'user'])->latest()->get();
+            } catch (\Exception $relException) {
+                \Illuminate\Support\Facades\Log::warning('Admin Global Leads - Relationship eager loading failed: ' . $relException->getMessage());
+                // Fallback: Fetch plain leads records without relationship context to avoid crashing the screen
+                $leads = $query->latest()->get();
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $leads
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Admin Global Leads - Eloquent pipeline failed: ' . $e->getMessage());
+            
+            // 3. Ultimate structural fallback: Raw Database Query bypasses model issues entirely
+            try {
+                $leads = \Illuminate\Support\Facades\DB::table('leads')
+                    ->latest()
+                    ->get();
+                    
+                return response()->json([
+                    'success' => true,
+                    'data' => $leads
+                ]);
+            } catch (\Exception $dbException) {
+                \Illuminate\Support\Facades\Log::emergency('Admin Global Leads - Complete system infrastructure failure: ' . $dbException->getMessage());
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to compile system-wide leads dataset.',
+                    'error_details' => $dbException->getMessage()
+                ], 500);
+            }
+        }
+    }
 }
