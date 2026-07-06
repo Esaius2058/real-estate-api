@@ -32,14 +32,22 @@ class AdminDashboardController extends Controller
     public function metrics()
     {
         try {
-            $totalVolume = Escrow::whereIn('status', ['funded', 'inspection', 'closing', 'completed'])->sum('amount');
-            $activeEscrows = Escrow::whereIn('status', ['funded', 'inspection', 'closing'])->count();
-            $pendingDisputes = EscrowDispute::where('status', 'pending')->count();
+            $totalVolume = Escrow::withoutGlobalScope(AgencyScope::class)
+                ->whereIn('status', ['funded', 'inspection', 'closing', 'completed'])
+                ->sum('amount');
+                
+            $activeEscrows = Escrow::withoutGlobalScope(AgencyScope::class)
+                ->whereIn('status', ['funded', 'inspection', 'closing'])
+                ->count();
+                
+            $pendingDisputes = EscrowDispute::withoutGlobalScope(AgencyScope::class)
+                ->where('status', 'pending')
+                ->count();
             
             $saasRevenue = Payment::where('payment_method', 'paystack_card')
                 ->where('status', 'completed')
                 ->whereHas('user', function($q) {
-                    $q->whereExists(function($sub) {
+                    $q->withoutGlobalScope(AgencyScope::class)->whereExists(function($sub) {
                         $sub->select(DB::raw(1))
                             ->from('subscriptions')
                             ->whereRaw('subscriptions.subscribable_id = users.id');
@@ -63,7 +71,12 @@ class AdminDashboardController extends Controller
 
     public function disputes()
     {
-        return response()->json(EscrowDispute::with(['escrow.buyer', 'escrow.seller', 'raisedBy'])->latest()->paginate(15));
+        return response()->json(
+            EscrowDispute::withoutGlobalScope(AgencyScope::class)
+                ->with(['escrow.buyer', 'escrow.seller', 'raisedBy'])
+                ->latest()
+                ->paginate(15)
+        );
     }
 
     public function getUsers()
@@ -88,7 +101,11 @@ class AdminDashboardController extends Controller
 
         try {
             return DB::transaction(function () use ($data, $id) {
-                $dispute = EscrowDispute::with('escrow.buyer', 'escrow.seller')->lockForUpdate()->findOrFail($id);
+                $dispute = EscrowDispute::withoutGlobalScope(AgencyScope::class)
+                    ->with('escrow.buyer', 'escrow.seller')
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+                    
                 $escrow = $dispute->escrow;
 
                 if ($dispute->status === 'resolved') {
@@ -138,9 +155,6 @@ class AdminDashboardController extends Controller
         }
     }
 
-    /**
-     * Commit financial movement metrics directly into core transaction trace ledgers.
-     */
     protected function logOverrideAction(int $escrowId, string $action, int $amount, array $snapshot): void
     {
         DB::table('transaction_logs')->insert([
@@ -153,50 +167,115 @@ class AdminDashboardController extends Controller
     }
 
     /**
-     *  UNIFIED DASHBOARD HUB
+     * UNIFIED DASHBOARD HUB
      * Returns all data needed for the admin dashboard in ONE API call
      */
-// AdminDashboardController.php
-
-/**
- * UNIFIED DASHBOARD HUB
- * Returns all data needed for the admin dashboard in ONE API call
- */
-// In App\Http\Controllers\Api\v1\AdminDashboardController.php
-
-public function dashboardHub() 
-{
-    try {
-        $disputes = EscrowDispute::with(['escrow.buyer', 'escrow.seller', 'raisedBy'])
-            ->where('status', 'pending')
-            ->get();
-        
-        $totalVolume = Escrow::whereIn('status', ['funded', 'inspection', 'closing'])->sum('amount');
-        $totalUsers = User::count();
-        $totalAgencies = DB::table('agencies')->count();
-        
-        // Add property counts and recent list
-        $totalProperties = Property::count();
-        $recentProperties = Property::with('agent')->latest()->take(3)->get();
-        
+   /**
+     * UNIFIED DASHBOARD HUB
+     * Returns all data needed for the admin dashboard safely, bypassing global multi-tenant scopes.
+     */
+    public function dashboardHub() 
+    {
+        // Initialize structural fallbacks to guarantee front-end data keys are always populated
+        $totalVolume = 0; 
+        $totalUsers = 0; 
+        $totalAgencies = 0; 
+        $totalProperties = 0; 
         $pendingKycCount = 0;
-        if (class_exists('\App\Models\VaultDocument')) {
-            $pendingKycCount = \App\Models\VaultDocument::where('status', 'pending')->count();
+        
+        $disputes = collect(); 
+        $recentProperties = collect(); 
+        $recentAgencies = collect(); 
+        $recentLogs = collect();
+
+        // 1. Process Total Escrow Volume Accrual Metrics
+        try { 
+            $totalVolume = Escrow::withoutGlobalScope(AgencyScope::class)
+                ->whereIn('status', ['funded', 'inspection', 'closing'])
+                ->sum('amount'); 
+        } catch (Exception $e) { 
+            Log::warning('Dashboard Hub - Escrow volume accumulation failed: ' . $e->getMessage()); 
         }
+
+        // 2. Process Core Aggregates Counters
+        try { $totalUsers = User::withoutGlobalScope(AgencyScope::class)->count(); } catch (Exception $e) {}
+        try { $totalAgencies = DB::table('agencies')->count(); } catch (Exception $e) {}
+        try { $totalProperties = Property::withoutGlobalScope(AgencyScope::class)->count(); } catch (Exception $e) {}
         
-        $recentLogs = DB::table('activity_logs')
-            ->leftJoin('users', 'activity_logs.user_id', '=', 'users.id')
-            ->select(
-                'activity_logs.id', 
-                'activity_logs.action', 
-                'activity_logs.description', 
-                'activity_logs.created_at', 
-                'users.name as user_name'
-            )
-            ->orderBy('activity_logs.created_at', 'desc')
-            ->limit(20)
-            ->get();
-        
+        // 3. Gather Active Dispute Arbitration Records
+        try {
+            $disputes = EscrowDispute::withoutGlobalScope(AgencyScope::class)
+                ->with(['escrow.buyer', 'escrow.seller', 'raisedBy'])
+                ->where('status', 'pending')
+                ->get();
+        } catch (Exception $e) {
+            Log::warning('Dashboard Hub - Dispute retrieval failure: ' . $e->getMessage());
+        }
+
+        // 4. Gather Real-Estate Listing Pipelines
+        try {
+            $recentProperties = Property::withoutGlobalScope(AgencyScope::class)
+                ->with('agent')
+                ->latest()
+                ->take(3)
+                ->get();
+        } catch (Exception $e) {}
+
+        // 5. Gather Corporate Workspace Context profiles
+        try {
+            $recentAgencies = DB::table('agencies')->latest()->take(5)->get();
+        } catch (Exception $e) {
+            try { 
+                $recentAgencies = \App\Models\Agency::latest()->take(5)->get(); 
+            } catch (Exception $ex) {}
+        }
+
+        // 6. Gather Pending KYC Document Verifications
+        try {
+            if (class_exists('\App\Models\VaultDocument')) {
+                $pendingKycCount = \App\Models\VaultDocument::withoutGlobalScope(AgencyScope::class)
+                    ->where('status', 'pending')
+                    ->count();
+            }
+        } catch (Exception $e) {}
+
+        // 7. Process System-Wide Activity Audit Trails (Using an explicit safe fallback pattern)
+        try {
+            $recentLogs = ActivityLog::withoutGlobalScope(AgencyScope::class)
+                ->with('user')
+                ->latest()
+                ->take(20)
+                ->get()
+                ->map(function($log) {
+                    return [
+                        'id' => $log->id,
+                        'action' => $log->action,
+                        'description' => $log->description,
+                        'created_at' => $log->created_at,
+                        'user_name' => $log->user->name ?? $log->user_name ?? 'System Auto'
+                    ];
+                });
+        } catch (Exception $e) {
+            // Fallback block if the Eloquent model structure maps to an unorthodox schema variant
+            try {
+                $recentLogs = DB::table('activity_logs')
+                    ->leftJoin('users', 'activity_logs.user_id', '=', 'users.id')
+                    ->select(
+                        'activity_logs.id', 
+                        'activity_logs.action', 
+                        'activity_logs.description', 
+                        'activity_logs.created_at', 
+                        'users.name as user_name'
+                    )
+                    ->orderBy('activity_logs.created_at', 'desc')
+                    ->limit(20)
+                    ->get();
+            } catch (Exception $ex) {
+                Log::error('Dashboard Hub - Audit trail delivery system collapsed: ' . $ex->getMessage());
+            }
+        }
+
+        // Return clean, well-formed response payload mapping straight to React expectations
         return response()->json([
             'total_locked_volume' => (float)$totalVolume,
             'disputes' => $disputes,
@@ -204,28 +283,24 @@ public function dashboardHub()
             'platform_revenue' => (float)($totalVolume * 0.015),
             'total_users' => $totalUsers,
             'total_agencies' => $totalAgencies,
-            'total_properties' => $totalProperties,        // Added
-            'recent_properties' => $recentProperties,      // Added
+            'total_properties' => $totalProperties,
+            'recent_properties' => $recentProperties,
+            'recent_agencies' => $recentAgencies,
             'pending_kyc_count' => $pendingKycCount,
             'recent_logs' => $recentLogs,
         ]);
-        
-    } catch (Exception $e) {
-        Log::error('Dashboard hub data fetch failed', ['error' => $e->getMessage()]);
-        return response()->json(['message' => 'Failed to load dashboard data'], 500);
     }
-}
-public function getDashboardData(Request $request)
-{
-    return response()->json([
-        'users_count' => User::count(),
-        'properties_count' => Property::count(),
-        'escrows_count' => Escrow::count(),
-        'agencies_count' => \App\Models\Agency::count(),
-        'disputes_count' => EscrowDispute::where('status', 'pending')->count(),
-        'disputes' => EscrowDispute::where('status', 'pending')->with('raisedBy')->get(),
-        'recent_logs' => ActivityLog::latest()->take(15)->get(),
-        
-    ]);
-}
+
+    public function getDashboardData(Request $request)
+    {
+        return response()->json([
+            'users_count' => User::withoutGlobalScope(AgencyScope::class)->count(),
+            'properties_count' => Property::withoutGlobalScope(AgencyScope::class)->count(),
+            'escrows_count' => Escrow::withoutGlobalScope(AgencyScope::class)->count(),
+            'agencies_count' => \App\Models\Agency::count(),
+            'disputes_count' => EscrowDispute::withoutGlobalScope(AgencyScope::class)->where('status', 'pending')->count(),
+            'disputes' => EscrowDispute::withoutGlobalScope(AgencyScope::class)->where('status', 'pending')->with('raisedBy')->get(),
+            'recent_logs' => ActivityLog::withoutGlobalScope(AgencyScope::class)->latest()->take(15)->get(),
+        ]);
+    }
 }

@@ -29,6 +29,9 @@ use App\Http\Controllers\Api\v1\ChatController;
 use App\Http\Controllers\Api\v1\LogController;
 use App\Http\Controllers\Api\v1\SessionController;
 
+//Admin Agency Controller
+use App\Http\Controllers\Api\v1\AdminAgencyController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -119,7 +122,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Back-Office Mediation & Administration Workspace
     Route::prefix('admin')->middleware('role:admin')->group(function () {
-    Route::get('/dashboard-hub', [AdminDashboardController::class, 'getDashboardData']);
+    Route::get('/dashboard-hub', [AdminDashboardController::class, 'dashboardHub']);
+  Route::get('/agencies', [AdminAgencyController::class, 'index']);
+  Route::get('/agencies/{id}', [AdminAgencyController::class, 'show']);
     
     Route::get('/disputes', [AdminDashboardController::class, 'disputes']);
     Route::post('/disputes/{id}/resolve', [AdminDashboardController::class, 'resolveDispute']);
