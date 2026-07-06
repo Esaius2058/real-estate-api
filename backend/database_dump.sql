@@ -1,0 +1,1083 @@
+-- MySQL dump 10.13  Distrib 8.4.10, for Linux (x86_64)
+--
+-- Host: localhost    Database: real_estate_db
+-- ------------------------------------------------------
+-- Server version	8.4.10-0ubuntu0.26.04.1
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `activity_logs`
+--
+
+DROP TABLE IF EXISTS `activity_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `activity_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `action` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ip_address` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `activity_logs_agency_id_index` (`agency_id`),
+  KEY `activity_logs_user_id_index` (`user_id`),
+  KEY `activity_logs_action_index` (`action`),
+  CONSTRAINT `activity_logs_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `activity_logs_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `activity_logs`
+--
+
+LOCK TABLES `activity_logs` WRITE;
+/*!40000 ALTER TABLE `activity_logs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `activity_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `agencies`
+--
+
+DROP TABLE IF EXISTS `agencies`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `agencies` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `join_code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `location` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subscription_tier` enum('basic','pro','enterprise') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'basic',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `agencies_join_code_unique` (`join_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `agencies`
+--
+
+LOCK TABLES `agencies` WRITE;
+/*!40000 ALTER TABLE `agencies` DISABLE KEYS */;
+INSERT INTO `agencies` VALUES (1,'Makao Real Estate HQ','MAKAO-1','Nairobi, Kenya','basic','2026-06-15 08:27:44','2026-06-15 08:27:44'),(2,'Coastal Properties Ltd','COASTAL-1','Mombasa, Kenya','basic','2026-06-15 08:27:44','2026-06-15 08:27:44'),(3,'Qwetu Properties','QWETU-19','Nairobi, Kenya','pro','2026-06-15 08:27:46','2026-06-15 08:27:46');
+/*!40000 ALTER TABLE `agencies` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `audit_logs`
+--
+
+DROP TABLE IF EXISTS `audit_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `audit_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `audit_logs`
+--
+
+LOCK TABLES `audit_logs` WRITE;
+/*!40000 ALTER TABLE `audit_logs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `audit_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `cache`
+--
+
+DROP TABLE IF EXISTS `cache`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cache` (
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `value` mediumtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expiration` bigint NOT NULL,
+  PRIMARY KEY (`key`),
+  KEY `cache_expiration_index` (`expiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `cache`
+--
+
+LOCK TABLES `cache` WRITE;
+/*!40000 ALTER TABLE `cache` DISABLE KEYS */;
+INSERT INTO `cache` VALUES ('makao-real-estate-cache-agency_2_user_2_leads_page_1','a:3:{s:4:\"data\";a:4:{i:0;a:13:{s:2:\"id\";i:5;s:9:\"agency_id\";i:2;s:8:\"agent_id\";i:2;s:11:\"property_id\";i:0;s:4:\"name\";s:12:\"Janet Omanje\";s:5:\"email\";s:17:\"jano123@gmail.com\";s:5:\"phone\";s:13:\"+254780543123\";s:5:\"value\";s:11:\"82000000.00\";s:12:\"kanban_stage\";s:6:\"closed\";s:17:\"lead_requirements\";N;s:10:\"created_at\";s:27:\"2026-06-16T07:06:05.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-19T12:27:07.000000Z\";s:14:\"assigned_agent\";a:17:{s:2:\"id\";i:2;s:9:\"agency_id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";s:11:\"avatar_path\";s:52:\"avatars/qJHWxIYymg6u5lnGK0awctnA7Qj3lke466Al5KFZ.jpg\";s:5:\"phone\";N;s:17:\"email_verified_at\";N;s:10:\"created_at\";s:27:\"2026-06-15T08:27:45.000000Z\";s:10:\"updated_at\";s:27:\"2026-07-03T07:54:50.000000Z\";s:4:\"role\";s:5:\"agent\";s:9:\"stripe_id\";N;s:7:\"pm_type\";N;s:12:\"pm_last_four\";N;s:13:\"trial_ends_at\";N;s:18:\"two_factor_enabled\";i:1;s:15:\"two_factor_code\";N;s:21:\"two_factor_expires_at\";N;}}i:1;a:13:{s:2:\"id\";i:4;s:9:\"agency_id\";i:2;s:8:\"agent_id\";i:2;s:11:\"property_id\";i:0;s:4:\"name\";s:13:\"Vince Staples\";s:5:\"email\";s:22:\"vincestaples@gmail.com\";s:5:\"phone\";s:13:\"+254789021456\";s:5:\"value\";s:11:\"81000000.00\";s:12:\"kanban_stage\";s:3:\"new\";s:17:\"lead_requirements\";N;s:10:\"created_at\";s:27:\"2026-06-16T07:00:22.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-16T07:00:22.000000Z\";s:14:\"assigned_agent\";a:17:{s:2:\"id\";i:2;s:9:\"agency_id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";s:11:\"avatar_path\";s:52:\"avatars/qJHWxIYymg6u5lnGK0awctnA7Qj3lke466Al5KFZ.jpg\";s:5:\"phone\";N;s:17:\"email_verified_at\";N;s:10:\"created_at\";s:27:\"2026-06-15T08:27:45.000000Z\";s:10:\"updated_at\";s:27:\"2026-07-03T07:54:50.000000Z\";s:4:\"role\";s:5:\"agent\";s:9:\"stripe_id\";N;s:7:\"pm_type\";N;s:12:\"pm_last_four\";N;s:13:\"trial_ends_at\";N;s:18:\"two_factor_enabled\";i:1;s:15:\"two_factor_code\";N;s:21:\"two_factor_expires_at\";N;}}i:2;a:13:{s:2:\"id\";i:3;s:9:\"agency_id\";i:2;s:8:\"agent_id\";i:2;s:11:\"property_id\";i:0;s:4:\"name\";s:17:\"Terrence Thornton\";s:5:\"email\";s:20:\"terrence23@gmail.com\";s:5:\"phone\";s:13:\"+254790123456\";s:5:\"value\";s:11:\"82000000.00\";s:12:\"kanban_stage\";s:5:\"offer\";s:17:\"lead_requirements\";N;s:10:\"created_at\";s:27:\"2026-06-15T12:58:45.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-18T11:49:42.000000Z\";s:14:\"assigned_agent\";a:17:{s:2:\"id\";i:2;s:9:\"agency_id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";s:11:\"avatar_path\";s:52:\"avatars/qJHWxIYymg6u5lnGK0awctnA7Qj3lke466Al5KFZ.jpg\";s:5:\"phone\";N;s:17:\"email_verified_at\";N;s:10:\"created_at\";s:27:\"2026-06-15T08:27:45.000000Z\";s:10:\"updated_at\";s:27:\"2026-07-03T07:54:50.000000Z\";s:4:\"role\";s:5:\"agent\";s:9:\"stripe_id\";N;s:7:\"pm_type\";N;s:12:\"pm_last_four\";N;s:13:\"trial_ends_at\";N;s:18:\"two_factor_enabled\";i:1;s:15:\"two_factor_code\";N;s:21:\"two_factor_expires_at\";N;}}i:3;a:13:{s:2:\"id\";i:2;s:9:\"agency_id\";i:2;s:8:\"agent_id\";i:2;s:11:\"property_id\";i:0;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:20:\"jane.doe@example.com\";s:5:\"phone\";s:13:\"+254700000002\";s:5:\"value\";s:9:\"100000.00\";s:12:\"kanban_stage\";s:7:\"showing\";s:17:\"lead_requirements\";N;s:10:\"created_at\";s:27:\"2026-06-15T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-15T08:27:46.000000Z\";s:14:\"assigned_agent\";a:17:{s:2:\"id\";i:2;s:9:\"agency_id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";s:11:\"avatar_path\";s:52:\"avatars/qJHWxIYymg6u5lnGK0awctnA7Qj3lke466Al5KFZ.jpg\";s:5:\"phone\";N;s:17:\"email_verified_at\";N;s:10:\"created_at\";s:27:\"2026-06-15T08:27:45.000000Z\";s:10:\"updated_at\";s:27:\"2026-07-03T07:54:50.000000Z\";s:4:\"role\";s:5:\"agent\";s:9:\"stripe_id\";N;s:7:\"pm_type\";N;s:12:\"pm_last_four\";N;s:13:\"trial_ends_at\";N;s:18:\"two_factor_enabled\";i:1;s:15:\"two_factor_code\";N;s:21:\"two_factor_expires_at\";N;}}}s:5:\"links\";a:4:{s:5:\"first\";s:41:\"http://localhost:8000/api/v1/leads?page=1\";s:4:\"last\";s:41:\"http://localhost:8000/api/v1/leads?page=1\";s:4:\"prev\";N;s:4:\"next\";N;}s:4:\"meta\";a:8:{s:12:\"current_page\";i:1;s:4:\"from\";i:1;s:9:\"last_page\";i:1;s:5:\"links\";a:3:{i:0;a:4:{s:3:\"url\";N;s:5:\"label\";s:16:\"&laquo; Previous\";s:4:\"page\";N;s:6:\"active\";b:0;}i:1;a:4:{s:3:\"url\";s:41:\"http://localhost:8000/api/v1/leads?page=1\";s:5:\"label\";s:1:\"1\";s:4:\"page\";i:1;s:6:\"active\";b:1;}i:2;a:4:{s:3:\"url\";N;s:5:\"label\";s:12:\"Next &raquo;\";s:4:\"page\";N;s:6:\"active\";b:0;}}s:4:\"path\";s:34:\"http://localhost:8000/api/v1/leads\";s:8:\"per_page\";i:20;s:2:\"to\";i:4;s:5:\"total\";i:4;}}',1783067092),('makao-real-estate-cache-agency_2_user_2_properties_page_1','a:3:{s:4:\"data\";a:5:{i:0;a:18:{s:2:\"id\";i:11;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:38:\"The Lakeview Horizon Villa, Riat Hills\";s:5:\"price\";i:65000000;s:8:\"location\";s:10:\"Riat Hills\";s:4:\"city\";s:6:\"Kisumu\";s:8:\"bedrooms\";i:5;s:5:\"baths\";i:5;s:4:\"sqft\";i:4500;s:11:\"description\";s:606:\"An exquisite 5-bedroom luxury villa perched on the serene slopes of Riat Hills, offering breathtaking panoramic views of Lake Victoria and the Kisumu skyline. This modern architectural masterpiece features double-volume ceilings, a chef\'s semi-open plan kitchen, a private infinity pool, and a sprawling master suite with a jacuzzi. The property is secured within a premium gated community with full backup power, cabro-paved driveways, and beautifully manicured gardens. Perfect for high-net-worth individuals seeking prestige, privacy, and tranquility just minutes away from Kisumu International Airport.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";N;s:9:\"amenities\";a:7:{i:0;s:11:\"CCTV Camera\";i:1;s:32:\"Reliable Water Supply (Borehole)\";i:2;s:31:\"Backup Generator (Common Areas)\";i:3;s:13:\"Swimming Pool\";i:4;s:17:\"Balcony / Terrace\";i:5;s:20:\"24/7 Manned Security\";i:6;s:28:\"Panoramic Lake Victoria View\";}s:6:\"images\";a:3:{s:4:\"main\";s:40:\"properties/main/1781863446657-4dhhe9.png\";s:8:\"interior\";a:5:{i:0;s:44:\"properties/interior/1781863446712-dkh02f.png\";i:1;s:44:\"properties/interior/1781863446713-4dms1b.png\";i:2;s:44:\"properties/interior/1781863446713-q8l8h9.png\";i:3;s:44:\"properties/interior/1781863446713-x91zsl.png\";i:4;s:44:\"properties/exterior/1781863446713-71v9bt.png\";}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:10:\"created_at\";s:27:\"2026-06-19T10:04:17.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-19T10:04:17.000000Z\";}i:1;a:18:{s:2:\"id\";i:1;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:19:\"The Oribi Penthouse\";s:5:\"price\";i:85000000;s:8:\"location\";s:8:\"Muthaiga\";s:4:\"city\";s:7:\"Nairobi\";s:8:\"bedrooms\";i:4;s:5:\"baths\";i:5;s:4:\"sqft\";i:4200;s:11:\"description\";s:236:\"An exquisite full-floor penthouse offering panoramic views of the Karura Forest. Features include floor-to-ceiling windows, a modern chef\'s kitchen with imported Italian marble, a private plunge pool, and complete smart-home automation.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";s:10:\"2026-12-15\";s:9:\"amenities\";a:0:{}s:6:\"images\";a:3:{s:4:\"main\";N;s:8:\"interior\";a:2:{i:0;s:51:\"makao/property_images/1781524831906-z34z78wv8xn.jpg\";i:1;s:50:\"makao/property_images/1781524855148-lzmuek1fku.jpg\";}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:10:\"created_at\";s:27:\"2026-06-15T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-15T12:02:40.000000Z\";}i:2;a:18:{s:2:\"id\";i:5;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:34:\"Mount Kenya Wildlife Estate Chalet\";s:5:\"price\";i:68000000;s:8:\"location\";s:27:\"Mount Kenya Wildlife Estate\";s:4:\"city\";s:7:\"Nanyuki\";s:8:\"bedrooms\";i:4;s:5:\"baths\";i:4;s:4:\"sqft\";i:4100;s:11:\"description\";s:212:\"Premium holiday home set inside a secure wildlife conservancy footprint. Offers unobstructed, crisp views of Mount Kenya. Game tracks wrap around the property. Ideal for high-yielding short-term vacation rentals.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";s:10:\"2027-06-15\";s:9:\"amenities\";a:0:{}s:6:\"images\";a:3:{s:4:\"main\";N;s:8:\"interior\";a:0:{}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:10:\"created_at\";s:27:\"2026-06-14T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-14T08:27:46.000000Z\";}i:3;a:18:{s:2:\"id\";i:2;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:24:\"Nyali Oceanfront Retreat\";s:5:\"price\";i:55000000;s:8:\"location\";s:11:\"Nyali Beach\";s:4:\"city\";s:7:\"Mombasa\";s:8:\"bedrooms\";i:3;s:5:\"baths\";i:4;s:4:\"sqft\";i:3100;s:11:\"description\";s:234:\"Luxury 3-bedroom oceanfront apartment with direct beach access. Enjoy uninterrupted Indian Ocean views from an expansive wrap-around private balcony. Includes a communal infinity pool, 24/7 security, and an automated backup generator.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";s:10:\"2026-10-15\";s:9:\"amenities\";a:0:{}s:6:\"images\";a:3:{s:4:\"main\";N;s:8:\"interior\";a:0:{}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:10:\"created_at\";s:27:\"2026-06-12T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-12T08:27:46.000000Z\";}i:4;a:18:{s:2:\"id\";i:3;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:25:\"Riat Hills Lakeside Villa\";s:5:\"price\";i:38000000;s:8:\"location\";s:10:\"Riat Hills\";s:4:\"city\";s:6:\"Kisumu\";s:8:\"bedrooms\";i:5;s:5:\"baths\";i:5;s:4:\"sqft\";i:4600;s:11:\"description\";s:219:\"An architectural masterpiece nestled on the exclusive Riat Hills. Offers breathtaking panoramic views of Lake Victoria and Kisumu city. Features multi-level terraces, solar water heating, and high-end mahogany finishes.\";s:6:\"status\";s:14:\"Under Contract\";s:17:\"contract_end_date\";s:10:\"2026-07-15\";s:9:\"amenities\";a:0:{}s:6:\"images\";a:3:{s:4:\"main\";N;s:8:\"interior\";a:0:{}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:10:\"created_at\";s:27:\"2026-06-01T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-14T08:27:46.000000Z\";}}s:5:\"links\";a:4:{s:5:\"first\";s:52:\"http://localhost:8000/api/v1/agent/properties?page=1\";s:4:\"last\";s:52:\"http://localhost:8000/api/v1/agent/properties?page=1\";s:4:\"prev\";N;s:4:\"next\";N;}s:4:\"meta\";a:8:{s:12:\"current_page\";i:1;s:4:\"from\";i:1;s:9:\"last_page\";i:1;s:5:\"links\";a:3:{i:0;a:4:{s:3:\"url\";N;s:5:\"label\";s:16:\"&laquo; Previous\";s:4:\"page\";N;s:6:\"active\";b:0;}i:1;a:4:{s:3:\"url\";s:52:\"http://localhost:8000/api/v1/agent/properties?page=1\";s:5:\"label\";s:1:\"1\";s:4:\"page\";i:1;s:6:\"active\";b:1;}i:2;a:4:{s:3:\"url\";N;s:5:\"label\";s:12:\"Next &raquo;\";s:4:\"page\";N;s:6:\"active\";b:0;}}s:4:\"path\";s:45:\"http://localhost:8000/api/v1/agent/properties\";s:8:\"per_page\";i:20;s:2:\"to\";i:5;s:5:\"total\";i:5;}}',1783067091),('makao-real-estate-cache-property_show_1','a:1:{s:4:\"data\";a:19:{s:2:\"id\";i:1;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:19:\"The Oribi Penthouse\";s:5:\"price\";i:85000000;s:8:\"location\";s:8:\"Muthaiga\";s:4:\"city\";s:7:\"Nairobi\";s:8:\"bedrooms\";i:4;s:5:\"baths\";i:5;s:4:\"sqft\";i:4200;s:11:\"description\";s:236:\"An exquisite full-floor penthouse offering panoramic views of the Karura Forest. Features include floor-to-ceiling windows, a modern chef\'s kitchen with imported Italian marble, a private plunge pool, and complete smart-home automation.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";s:10:\"2026-12-15\";s:9:\"amenities\";a:0:{}s:6:\"images\";a:3:{s:4:\"main\";N;s:8:\"interior\";a:2:{i:0;s:51:\"makao/property_images/1781524831906-z34z78wv8xn.jpg\";i:1;s:50:\"makao/property_images/1781524855148-lzmuek1fku.jpg\";}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:6:\"agency\";a:4:{s:2:\"id\";i:2;s:4:\"name\";s:22:\"Coastal Properties Ltd\";s:8:\"location\";s:14:\"Mombasa, Kenya\";s:17:\"subscription_tier\";s:5:\"basic\";}s:10:\"created_at\";s:27:\"2026-06-15T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-15T12:02:40.000000Z\";}}',1783151728),('makao-real-estate-cache-property_show_11','a:1:{s:4:\"data\";a:19:{s:2:\"id\";i:11;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:38:\"The Lakeview Horizon Villa, Riat Hills\";s:5:\"price\";i:65000000;s:8:\"location\";s:10:\"Riat Hills\";s:4:\"city\";s:6:\"Kisumu\";s:8:\"bedrooms\";i:5;s:5:\"baths\";i:5;s:4:\"sqft\";i:4500;s:11:\"description\";s:606:\"An exquisite 5-bedroom luxury villa perched on the serene slopes of Riat Hills, offering breathtaking panoramic views of Lake Victoria and the Kisumu skyline. This modern architectural masterpiece features double-volume ceilings, a chef\'s semi-open plan kitchen, a private infinity pool, and a sprawling master suite with a jacuzzi. The property is secured within a premium gated community with full backup power, cabro-paved driveways, and beautifully manicured gardens. Perfect for high-net-worth individuals seeking prestige, privacy, and tranquility just minutes away from Kisumu International Airport.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";N;s:9:\"amenities\";a:7:{i:0;s:11:\"CCTV Camera\";i:1;s:32:\"Reliable Water Supply (Borehole)\";i:2;s:31:\"Backup Generator (Common Areas)\";i:3;s:13:\"Swimming Pool\";i:4;s:17:\"Balcony / Terrace\";i:5;s:20:\"24/7 Manned Security\";i:6;s:28:\"Panoramic Lake Victoria View\";}s:6:\"images\";a:3:{s:4:\"main\";s:40:\"properties/main/1781863446657-4dhhe9.png\";s:8:\"interior\";a:5:{i:0;s:44:\"properties/interior/1781863446712-dkh02f.png\";i:1;s:44:\"properties/interior/1781863446713-4dms1b.png\";i:2;s:44:\"properties/interior/1781863446713-q8l8h9.png\";i:3;s:44:\"properties/interior/1781863446713-x91zsl.png\";i:4;s:44:\"properties/exterior/1781863446713-71v9bt.png\";}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:6:\"agency\";a:4:{s:2:\"id\";i:2;s:4:\"name\";s:22:\"Coastal Properties Ltd\";s:8:\"location\";s:14:\"Mombasa, Kenya\";s:17:\"subscription_tier\";s:5:\"basic\";}s:10:\"created_at\";s:27:\"2026-06-19T10:04:17.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-19T10:04:17.000000Z\";}}',1783151754),('makao-real-estate-cache-property_show_5','a:1:{s:4:\"data\";a:19:{s:2:\"id\";i:5;s:9:\"agency_id\";i:2;s:7:\"user_id\";i:2;s:5:\"title\";s:34:\"Mount Kenya Wildlife Estate Chalet\";s:5:\"price\";i:68000000;s:8:\"location\";s:27:\"Mount Kenya Wildlife Estate\";s:4:\"city\";s:7:\"Nanyuki\";s:8:\"bedrooms\";i:4;s:5:\"baths\";i:4;s:4:\"sqft\";i:4100;s:11:\"description\";s:212:\"Premium holiday home set inside a secure wildlife conservancy footprint. Offers unobstructed, crisp views of Mount Kenya. Game tracks wrap around the property. Ideal for high-yielding short-term vacation rentals.\";s:6:\"status\";s:6:\"Active\";s:17:\"contract_end_date\";s:10:\"2027-06-15\";s:9:\"amenities\";a:0:{}s:6:\"images\";a:3:{s:4:\"main\";N;s:8:\"interior\";a:0:{}s:8:\"exterior\";a:0:{}}s:5:\"agent\";a:3:{s:2:\"id\";i:2;s:4:\"name\";s:8:\"Jane Doe\";s:5:\"email\";s:18:\"jane.doe@gmail.com\";}s:6:\"agency\";a:4:{s:2:\"id\";i:2;s:4:\"name\";s:22:\"Coastal Properties Ltd\";s:8:\"location\";s:14:\"Mombasa, Kenya\";s:17:\"subscription_tier\";s:5:\"basic\";}s:10:\"created_at\";s:27:\"2026-06-14T08:27:46.000000Z\";s:10:\"updated_at\";s:27:\"2026-06-14T08:27:46.000000Z\";}}',1783151750),('makao-real-estate-cache-view_lock:prop_1:ip_127.0.0.1','b:1;',1783151728),('makao-real-estate-cache-view_lock:prop_11:ip_127.0.0.1','b:1;',1783151754),('makao-real-estate-cache-view_lock:prop_5:ip_127.0.0.1','b:1;',1783151750);
+/*!40000 ALTER TABLE `cache` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `cache_locks`
+--
+
+DROP TABLE IF EXISTS `cache_locks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cache_locks` (
+  `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `owner` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `expiration` bigint NOT NULL,
+  PRIMARY KEY (`key`),
+  KEY `cache_locks_expiration_index` (`expiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `cache_locks`
+--
+
+LOCK TABLES `cache_locks` WRITE;
+/*!40000 ALTER TABLE `cache_locks` DISABLE KEYS */;
+/*!40000 ALTER TABLE `cache_locks` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `chat_messages`
+--
+
+DROP TABLE IF EXISTS `chat_messages`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `chat_messages` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `session_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `agency_id` bigint unsigned NOT NULL,
+  `role` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `content` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `chat_messages_session_id_index` (`session_id`),
+  KEY `chat_messages_agency_id_index` (`agency_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `chat_messages`
+--
+
+LOCK TABLES `chat_messages` WRITE;
+/*!40000 ALTER TABLE `chat_messages` DISABLE KEYS */;
+INSERT INTO `chat_messages` VALUES (2,'test-123',0,'user','hello','2026-07-01 09:32:51','2026-07-01 09:32:51'),(3,'test-123',0,'user','hello',NULL,NULL),(4,'test-123',0,'model','Hello! How can I assist you with your real estate needs today?',NULL,NULL),(5,'test-123',0,'user','hello',NULL,NULL),(6,'test-123',0,'model','Hello! How can I assist you with your real estate needs today?',NULL,NULL),(9,'test-123',2,'user','hello','2026-07-01 10:22:14','2026-07-01 10:22:14'),(10,'test-123',2,'user','\"hello\"','2026-07-01 10:25:23','2026-07-01 10:25:23'),(11,'test-123',2,'model','[{\"type\":\"text\",\"text\":\"Hello! How can I assist you with your real estate needs today?\",\"extras\":{\"signature\":\"CsQBAQw51sfCeC4FtWtslkrGLx1kA3ZY6TV4kybJeP5vS4\\/55iKAcxiYIVhxRWDLAq14gp8LjRC93WPoMcT5flrs85GVcNii1abRWAWqH6SiYphLDoTFHPMkqxgsOINJ8ythrFvn0DUT93+VjA\\/BdPnG6xmuAu0u0s3sDz81FxbtxZVlQpqFh9OaSS8+1nU45kOS1se2FGX4BMxJh5Z0BmVD60hMsFPWNyF5\\/Sink4+auc9UY2Ge8LBqACoGCjc+3BXzCnJoIQ==\"}}]','2026-07-01 10:25:24','2026-07-01 10:25:24'),(12,'test-123',2,'user','\"hello\"','2026-07-01 10:26:11','2026-07-01 10:26:11'),(13,'test-123',2,'model','\"Hello! How can I assist you with your real estate needs today?\"','2026-07-01 10:26:11','2026-07-01 10:26:11'),(14,'test-123',2,'user','\"how many properties are currently active\"','2026-07-01 10:27:18','2026-07-01 10:27:18'),(15,'test-123',2,'model','\"I am sorry, but I am unable to retrieve the number of active properties at this moment due to an internal connectivity error.\"','2026-07-01 10:27:18','2026-07-01 10:27:18'),(16,'test-123',2,'user','\"what is your role here\"','2026-07-01 10:27:51','2026-07-01 10:27:51'),(17,'test-123',2,'model','[{\"type\":\"text\",\"text\":\"I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. I am currently unable to retrieve the total number of active properties.\",\"extras\":{\"signature\":\"CvYGAQw51seKP1bAICwImL7PNV3iYmIUxyZ0lhEQWKjSA7g933fxe25Ax\\/p2J0fvQsn6UTKowu4+j9LxceQGfXKsz9LL6MRbMJSM1zl03N2z+fdbEYwk8UB9+xW3HHZVil6QEP5r0gbGnkMq8oIAJMr0qvLrsResjGD56b0fkPHu5XP6hE3zWAheBhfhc6M5o7VO\\/xpJf2C+nowtICjGlXx287KRCIDZ5tfoSXh9WeaQzPjf9eVOnaV5SYjHXtbHJ+S\\/I3iJoiAbLi6aUkyzMAIRlTxwWc4bYO97XAfZkAw5FNu22t0n8NdKaMOJxa8CR9zz1DNhrwU+gUc4\\/dik\\/cQalbev6nnOMOWhUSPqgRxc1vFstDtSnMlIG3K5LQ\\/xZ5\\/UdlTUKqa64Ykp\\/vo470BRnl4Tf7qTq1KKS3z96yYkTMXWlXB9qXionAoGxLtzUtzUK4E9tFZRck0D0FjiW+K4nNP7epODKNi84Kz9QYokIeNL2vNvbbY1uPabJlB4AnaEuQ8+ABGMTxXa2LTTWU2BabHX6ymXw00TfLA7pb\\/NbsxyXureWP\\/o8sDlA6U4bwTtTvahI8diXT4yE5dyrbe2xAZ\\/XJ329Pg\\/l5\\/ekKKWXeyvNXJIiJ2u0iWMYrDAP1ewXFtg\\/LrjznXcawWGRGmbg4865FyG6ng+6AQNKLL3C4E6U\\/SA0CmQQvv6608ZGrH\\/pGkcY2SaQHN06XZ3Ow9UgqYBOaiEIm8aQ7YkWGEmJTDNnugDpb9NsDRyafi3aHmuZOm0talzkWUHN1JWTsYzLf9t4JzUll80QBjuHVUtCPsU4X2PFwVUfQE3gfQC8QvlisFK3eMWYZN5ASOGeY5ogX4TkLWvY7u\\/qu4QInEf4+wESwIEoT0jPXnXikMNgCaS9if1EbdbDBJfqvzu6ueMijV2h1s9J0v3fqk1K7jzMpi8Eg7NGCW9H0wV2\\/jV9y0C820GBfl2rQ8Crv+RGAXdNZhcRGGPc4TKPqA6RMjzcQkm8hGqJzIRNFbIl+8Qk8qUpFP8XsRgyp4S\\/TG0ikp3cLPC3RMVhTwlb2WG+MXACOeqD7yL\\/NtLwn1AhPskvb\\/Ns+PWmTWxasfZKdVN0sadGjCNU+4\\/0Fn+6CvztdRNs6IxQ\\/1rnxWTTh7urVGB1Ubs8VSBlCA4UwISeh3L4vhs0SjJbubJ3Q==\"}}]','2026-07-01 10:27:51','2026-07-01 10:27:51'),(18,'test-123',2,'user','\"how many actie listings are therer\"','2026-07-01 10:33:23','2026-07-01 10:33:23'),(19,'test-123',2,'model','[{\"type\":\"text\",\"text\":\"I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. I am currently unable to retrieve the total number of active properties.\",\"extras\":{\"signature\":\"CuAGAQw51sdD9kS80mo0ENV4jZ357guIl4jTnbwp+di87RWiftUOghfxsT8KGhwgEF2\\/sSbif0tsy+7Yk40xsU0xvNbs3QnFmQ\\/npecTCuN0Q7s8zqPriDF0kqIs5Y3NSIqoP9D4cMJxVCwhHDPwjmFpq6JIOf4v\\/l\\/+cPJHU0AKriqJey97J\\/7nrXIYoDCBDl8LPtLs4gCnOMSPwdJxPP9C0KHEcXktE4x1CbKxCNN5rVF+A70L6Ren+2t6rw6Ak5H7ailoKrqJ5OoBgoF0uIpNO83TMuF5QF4jETBskj8n8DuqfDrYSEue4Ww\\/gp42TicF5CTKHnvXDPl5UvbiOmVkY8rzNmjvIxU+4SsMGod5jNIYBeMg8SsKahLFYVzL3Nd4gk0UoBv+hbq3ZyPkRQoIRi7cBW+aVfmMwxhsDCwK1JHtC7xGXG5NRKJ81hntuXZXz5GeUvr0IhXEETDwgU138RDYJFnmGjZGUgmf6VapYyvIcinTkebt2WBB2j3Rb41n6aIqFqovH6XCD\\/oOMwGTBGwhu4BCmeblXDLnG4OzLnlBL+aHn8e03kbCF7BLf1kwZslojyD446MltKqH+nG9TS3SMHrTTdGzRNqQ5iwLTpdxfT4ZNxomjmyTw3vc2oZB0NTNVp\\/UGv9Pm3buRfBtRo3PBXR4rTlmyG0WWMdjjY9ktsQqjQExiWLtYttXlV\\/Kdzl81RfhHiX92\\/I8qYYR0BjmjYpfFz458Vnhc0j+xt2CoHShBkabrVFEa7EPSDk5FmWuKCjlBjRUacMhUMQ2HwSYtHuiHrs92+nfAX\\/3Jpr4lA8rPUxMN9HhvcNaIx3oK\\/pJjmirQNqFja4qxVKX5oD7cAmwBefWP7y0FDnPLG+4FlmDx4W+z1fXAQ6zmHEJLZhAbxfgPMXle2Cga6UUUoPR7a68bFnWJwzl8sLiZM5GM6T8QAP1W55SbGEKTVNveTkilDdBfC8HmikOpHkubJ8doyWHk1mo+uJTbURHkKVI7en5ZBw\\/hhrwOhcYUqDTIDDm+ffGTJ8OemBUiNW941lbCcc0uedks+BoB2uv5UGEQchYhBc2VtZC83qcGbIdlPEZSvHn2OcuQDleUZ\\/NCXPcs0Z\\/LlLHmqT0zuZsVyjHAFgMvHkMi9\\/fUkM9YudO\"}}]','2026-07-01 10:33:24','2026-07-01 10:33:24'),(20,'test-123',2,'user','how many actie listings are there',NULL,NULL),(21,'test-123',2,'model','I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. I am currently unable to retrieve the total number of active properties due to an internal connectivity error.',NULL,NULL),(22,'test-123',2,'user','\"how many actie listings are there\"','2026-07-01 10:35:14','2026-07-01 10:35:14'),(23,'test-123',2,'model','\"I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. I am currently unable to retrieve the total number of active properties due to an internal connectivity error.\"','2026-07-01 10:35:14','2026-07-01 10:35:14'),(25,'test-123',2,'user','\"which error specifically\"','2026-07-01 10:36:54','2026-07-01 10:36:54'),(26,'test-123',2,'model','[{\"type\":\"text\",\"text\":\"\\\"I am experiencing an internal connectivity error, which prevents me from accessing the live property database at this moment.\\\"\",\"extras\":{\"signature\":\"CqgCAQw51sczr980as2hmOzCY4iVaqIUIJgtck6fT40xoNCnhls4owEbY372ICFT4Fhnz6PJDg93XJhnPivbSWWdzMbvYuESahaAuLR5ctfBXSMYqS6bnKyWKfiQQi+L0VqyLTwvSc2iTeRJ1npeewgrD7SqIRC2KbRL7yO1uxmWqZesR4W8\\/aCtQCmlkWGAKJ5nEIfPNIfPlIwKSAkGIJrJ0JDrgJoqO+iYMKgibTLHjPHF5u3u3gS+T0shz\\/9q1Po6UleMPwFDvvAqZiEBwjo\\/8B2NeoehWFJ3knB6JuuSQjyVp\\/NEHw56IIKD0Z0zdZ1n3qR848f8udmIGGcVd+FhkMJA9FhVtPZInMrOaxIc1KvovO3NoEgIS8XDCNogC7fg+PPyJhiUaEA=\"}}]','2026-07-01 10:36:54','2026-07-01 10:36:54'),(28,'test-123',2,'user','\"hello\"','2026-07-01 10:37:17','2026-07-01 10:37:17'),(29,'test-123',2,'model','[{\"type\":\"text\",\"text\":\"Hello. I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. How may I assist you today?\",\"extras\":{\"signature\":\"CuABAQw51sfYfSjmPsNCuC+cUkVv\\/hEvzmw4WqvzE2h3Kkgu8y\\/oDla1aBrKLIKErzI4Rgom4GY\\/jTcFTxwV0m1VixJals+TXR1fqznA6k4Vo3P\\/4wXXLU4lI\\/KYIW\\/kKLRfGrRUnrCyXKpKMS9PnoyGrDvhxYAoWRjJty2e6j3CJYnVlhxpdv4QYCt3C+YE6zGFfznB4vmxf40ne+wGj4VmZ99ydqCv+QuwFqSbuTS\\/tZ49BDIIM+ckTAFwzGibjvmtd\\/JO2edrpx7YYCqJ\\/vCbdAaIUT97R51QhTYPCkLqC8Y=\"}}]','2026-07-01 10:37:17','2026-07-01 10:37:17'),(30,'test-123',2,'user','hallo',NULL,NULL),(31,'test-123',2,'model','[{\"type\": \"text\", \"text\": \"Hello. I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. How may I assist you today?\", \"extras\": {\"signature\": \"Cp0BAQw51sfFYNn1jCwAhAaWHT9ixQs7ITKHMXVIUOCLnyoN5/4vyKoXa53+lhzT8c1APEchjGoB+vGHvIdUThERN6qGq7VoNNsRI77W49AGJXGuYB2+h1kDGZAC6LhoQTU+ifMhlFd8W6vChmKuGxs2DF35Rd/tqon2ROMSfh5YF2NDuYLManzVFqxCo5DH37pqzs5juzXTZHcdqVGODg==\"}}]',NULL,NULL),(32,'test-123',2,'user','\"hallo\"','2026-07-01 10:43:04','2026-07-01 10:43:04'),(33,'test-123',2,'model','\"[{\\\"type\\\": \\\"text\\\", \\\"text\\\": \\\"Hello. I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. How may I assist you today?\\\", \\\"extras\\\": {\\\"signature\\\": \\\"Cp0BAQw51sfFYNn1jCwAhAaWHT9ixQs7ITKHMXVIUOCLnyoN5\\/4vyKoXa53+lhzT8c1APEchjGoB+vGHvIdUThERN6qGq7VoNNsRI77W49AGJXGuYB2+h1kDGZAC6LhoQTU+ifMhlFd8W6vChmKuGxs2DF35Rd\\/tqon2ROMSfh5YF2NDuYLManzVFqxCo5DH37pqzs5juzXTZHcdqVGODg==\\\"}}]\"','2026-07-01 10:43:04','2026-07-01 10:43:04'),(34,'test-123',2,'user','hello how many properties are currently active?','2026-07-02 07:40:57','2026-07-02 07:40:57'),(35,'test-123',2,'model','I am Makao Intelligence, the elite AI concierge for the Makao Real Estate Platform. I am currently unable to retrieve the total number of active properties.','2026-07-02 07:40:57','2026-07-02 07:40:57'),(36,'test-123',2,'user','why can\'t you retrieve the properties?','2026-07-02 08:03:36','2026-07-02 08:03:36'),(37,'test-123',2,'model','I am experiencing an internal connectivity error, which prevents me from accessing the live property database at this moment.','2026-07-02 08:03:36','2026-07-02 08:03:36'),(38,'test-123',2,'user','What properties are available?','2026-07-02 08:07:04','2026-07-02 08:07:04'),(39,'test-123',2,'model','I am experiencing an internal connectivity error, which prevents me from accessing the live property database at this moment. Please try again shortly.','2026-07-02 08:07:04','2026-07-02 08:07:04'),(40,'test-123',2,'user','What properties are available?','2026-07-02 08:14:35','2026-07-02 08:14:35'),(41,'test-123',2,'model','I apologize, but I was unable to retrieve any properties from the inventory at this time.','2026-07-02 08:14:35','2026-07-02 08:14:35'),(42,'test-123',2,'user','What properties are available?','2026-07-02 08:23:02','2026-07-02 08:23:02'),(43,'test-123',2,'model','I am unable to retrieve the current property inventory. Please try again later.','2026-07-02 08:23:02','2026-07-02 08:23:02'),(44,'test-123',2,'user','What properties are available?','2026-07-02 08:27:15','2026-07-02 08:27:15'),(45,'test-123',2,'model','There is no matching inventory currently available.','2026-07-02 08:27:15','2026-07-02 08:27:15'),(46,'test-123',2,'user','What properties are available in Nyali?','2026-07-02 08:31:49','2026-07-02 08:31:49'),(47,'test-123',2,'model','There are no properties currently available in Nyali.','2026-07-02 08:31:49','2026-07-02 08:31:49'),(48,'test-123',2,'user','What properties are available in Nyali?','2026-07-02 08:37:49','2026-07-02 08:37:49'),(49,'test-123',2,'model','A 3-bedroom apartment in Nyali Beach, Mombasa, is available for KES 55,000,000. It has 4 baths and is 3100 sqft.','2026-07-02 08:37:49','2026-07-02 08:37:49');
+/*!40000 ALTER TABLE `chat_messages` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `escrow_disputes`
+--
+
+DROP TABLE IF EXISTS `escrow_disputes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `escrow_disputes` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `escrow_id` bigint unsigned NOT NULL,
+  `raised_by_id` bigint unsigned NOT NULL,
+  `reason` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('open','under_review','resolved') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'open',
+  `resolution` enum('pending','refunded_to_buyer','released_to_seller') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `admin_notes` text COLLATE utf8mb4_unicode_ci,
+  `resolved_by_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `escrow_disputes_escrow_id_foreign` (`escrow_id`),
+  KEY `escrow_disputes_raised_by_id_foreign` (`raised_by_id`),
+  KEY `escrow_disputes_resolved_by_id_foreign` (`resolved_by_id`),
+  CONSTRAINT `escrow_disputes_escrow_id_foreign` FOREIGN KEY (`escrow_id`) REFERENCES `escrows` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `escrow_disputes_raised_by_id_foreign` FOREIGN KEY (`raised_by_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `escrow_disputes_resolved_by_id_foreign` FOREIGN KEY (`resolved_by_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `escrow_disputes`
+--
+
+LOCK TABLES `escrow_disputes` WRITE;
+/*!40000 ALTER TABLE `escrow_disputes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `escrow_disputes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `escrow_events`
+--
+
+DROP TABLE IF EXISTS `escrow_events`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `escrow_events` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `escrow_id` bigint unsigned NOT NULL,
+  `action` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `actor` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `escrow_events_escrow_id_foreign` (`escrow_id`),
+  CONSTRAINT `escrow_events_escrow_id_foreign` FOREIGN KEY (`escrow_id`) REFERENCES `escrows` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `escrow_events`
+--
+
+LOCK TABLES `escrow_events` WRITE;
+/*!40000 ALTER TABLE `escrow_events` DISABLE KEYS */;
+/*!40000 ALTER TABLE `escrow_events` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `escrow_milestones`
+--
+
+DROP TABLE IF EXISTS `escrow_milestones`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `escrow_milestones` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `escrow_milestones`
+--
+
+LOCK TABLES `escrow_milestones` WRITE;
+/*!40000 ALTER TABLE `escrow_milestones` DISABLE KEYS */;
+/*!40000 ALTER TABLE `escrow_milestones` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `escrows`
+--
+
+DROP TABLE IF EXISTS `escrows`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `escrows` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `property_id` bigint unsigned NOT NULL,
+  `buyer_id` bigint unsigned NOT NULL,
+  `seller_id` bigint unsigned NOT NULL,
+  `agency_id` bigint unsigned NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `terms` text COLLATE utf8mb4_unicode_ci,
+  `status` enum('pending_funding','funded','inspection','closing','completed','disputed','cancelled') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending_funding',
+  `funded_at` timestamp NULL DEFAULT NULL,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `created_by` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `escrows_property_id_foreign` (`property_id`),
+  KEY `escrows_buyer_id_foreign` (`buyer_id`),
+  KEY `escrows_seller_id_foreign` (`seller_id`),
+  KEY `escrows_agency_id_foreign` (`agency_id`),
+  KEY `escrows_created_by_foreign` (`created_by`),
+  CONSTRAINT `escrows_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`),
+  CONSTRAINT `escrows_buyer_id_foreign` FOREIGN KEY (`buyer_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `escrows_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  CONSTRAINT `escrows_property_id_foreign` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`),
+  CONSTRAINT `escrows_seller_id_foreign` FOREIGN KEY (`seller_id`) REFERENCES `users` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `escrows`
+--
+
+LOCK TABLES `escrows` WRITE;
+/*!40000 ALTER TABLE `escrows` DISABLE KEYS */;
+INSERT INTO `escrows` VALUES (1,6,5,6,3,4500000.00,'Standard land sale agreement escrow terms. Balance to be paid upon title inspection.','funded','2026-06-15 08:27:48',NULL,4,'2026-06-15 08:27:48','2026-06-15 08:27:48'),(2,6,5,6,3,7200000.00,'Suburban Apartment Block structural transfer contract complete.','completed','2026-05-31 08:27:48','2026-06-13 08:27:48',4,'2026-05-31 08:27:48','2026-06-15 08:27:48');
+/*!40000 ALTER TABLE `escrows` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `failed_jobs`
+--
+
+DROP TABLE IF EXISTS `failed_jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `failed_jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `connection` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `queue` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `exception` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `failed_jobs`
+--
+
+LOCK TABLES `failed_jobs` WRITE;
+/*!40000 ALTER TABLE `failed_jobs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `failed_jobs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `job_batches`
+--
+
+DROP TABLE IF EXISTS `job_batches`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `job_batches` (
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `total_jobs` int NOT NULL,
+  `pending_jobs` int NOT NULL,
+  `failed_jobs` int NOT NULL,
+  `failed_job_ids` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `options` mediumtext COLLATE utf8mb4_unicode_ci,
+  `cancelled_at` int DEFAULT NULL,
+  `created_at` int NOT NULL,
+  `finished_at` int DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `job_batches`
+--
+
+LOCK TABLES `job_batches` WRITE;
+/*!40000 ALTER TABLE `job_batches` DISABLE KEYS */;
+/*!40000 ALTER TABLE `job_batches` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `jobs`
+--
+
+DROP TABLE IF EXISTS `jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `attempts` smallint unsigned NOT NULL,
+  `reserved_at` int unsigned DEFAULT NULL,
+  `available_at` int unsigned NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `jobs_queue_index` (`queue`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `jobs`
+--
+
+LOCK TABLES `jobs` WRITE;
+/*!40000 ALTER TABLE `jobs` DISABLE KEYS */;
+INSERT INTO `jobs` VALUES (1,'default','{\"uuid\":\"4fa76815-391f-4f80-b676-9abe47fb3016\",\"displayName\":\"App\\\\Jobs\\\\DispatchLeadMatch\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"deleteWhenMissingModels\":false,\"data\":{\"commandName\":\"App\\\\Jobs\\\\DispatchLeadMatch\",\"command\":\"O:26:\\\"App\\\\Jobs\\\\DispatchLeadMatch\\\":1:{s:4:\\\"lead\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:15:\\\"App\\\\Models\\\\Lead\\\";s:2:\\\"id\\\";i:10;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}}\",\"batchId\":null},\"createdAt\":1782737811,\"delay\":null}',0,NULL,1782737811,1782737811),(2,'default','{\"uuid\":\"28010c45-3d67-408d-a0d3-588148d7d309\",\"displayName\":\"App\\\\Jobs\\\\DispatchLeadMatch\",\"job\":\"Illuminate\\\\Queue\\\\CallQueuedHandler@call\",\"maxTries\":null,\"maxExceptions\":null,\"failOnTimeout\":false,\"backoff\":null,\"timeout\":null,\"retryUntil\":null,\"deleteWhenMissingModels\":false,\"data\":{\"commandName\":\"App\\\\Jobs\\\\DispatchLeadMatch\",\"command\":\"O:26:\\\"App\\\\Jobs\\\\DispatchLeadMatch\\\":1:{s:4:\\\"lead\\\";O:45:\\\"Illuminate\\\\Contracts\\\\Database\\\\ModelIdentifier\\\":5:{s:5:\\\"class\\\";s:15:\\\"App\\\\Models\\\\Lead\\\";s:2:\\\"id\\\";i:10;s:9:\\\"relations\\\";a:0:{}s:10:\\\"connection\\\";s:5:\\\"mysql\\\";s:15:\\\"collectionClass\\\";N;}}\",\"batchId\":null},\"createdAt\":1782738040,\"delay\":null}',0,NULL,1782738040,1782738040);
+/*!40000 ALTER TABLE `jobs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `lead_activities`
+--
+
+DROP TABLE IF EXISTS `lead_activities`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lead_activities` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `lead_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `type` enum('call','email','showing','system') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `activity_date` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lead_activities_lead_id_foreign` (`lead_id`),
+  KEY `lead_activities_user_id_foreign` (`user_id`),
+  CONSTRAINT `lead_activities_lead_id_foreign` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lead_activities_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `lead_activities`
+--
+
+LOCK TABLES `lead_activities` WRITE;
+/*!40000 ALTER TABLE `lead_activities` DISABLE KEYS */;
+INSERT INTO `lead_activities` VALUES (1,3,2,'system','Lead created and assigned.',NULL,'2026-06-15 12:58:45','2026-06-15 12:58:45'),(2,4,2,'system','Lead created and assigned.',NULL,'2026-06-16 07:00:22','2026-06-16 07:00:22'),(3,5,2,'system','Lead created and assigned.',NULL,'2026-06-16 07:06:05','2026-06-16 07:06:05');
+/*!40000 ALTER TABLE `lead_activities` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `leads`
+--
+
+DROP TABLE IF EXISTS `leads`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `leads` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned NOT NULL,
+  `agent_id` bigint unsigned NOT NULL,
+  `property_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `value` decimal(15,2) DEFAULT NULL,
+  `kanban_stage` enum('new','contacted','showing','offer','escrow','closed','lost') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'new',
+  `lead_requirements` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `leads_agency_id_index` (`agency_id`),
+  KEY `leads_agent_id_index` (`agent_id`),
+  KEY `leads_kanban_stage_index` (`kanban_stage`),
+  CONSTRAINT `leads_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `leads_agent_id_foreign` FOREIGN KEY (`agent_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `leads`
+--
+
+LOCK TABLES `leads` WRITE;
+/*!40000 ALTER TABLE `leads` DISABLE KEYS */;
+INSERT INTO `leads` VALUES (1,2,3,0,'John Smith','john.smith@example.com','+254700000001',150000.00,'offer',NULL,'2026-06-15 08:27:46','2026-06-15 08:27:46'),(2,2,2,0,'Jane Doe','jane.doe@example.com','+254700000002',100000.00,'showing',NULL,'2026-06-15 08:27:46','2026-06-15 08:27:46'),(3,2,2,0,'Terrence Thornton','terrence23@gmail.com','+254790123456',82000000.00,'offer',NULL,'2026-06-15 12:58:45','2026-06-18 11:49:42'),(4,2,2,0,'Vince Staples','vincestaples@gmail.com','+254789021456',81000000.00,'new',NULL,'2026-06-16 07:00:22','2026-06-16 07:00:22'),(5,2,2,0,'Janet Omanje','jano123@gmail.com','+254780543123',82000000.00,'closed',NULL,'2026-06-16 07:06:05','2026-06-19 12:27:07'),(6,1,1,0,'Bruce Wayne','bruce@example.com','0700000000',NULL,'offer','{\"max_budget\": 45000000, \"must_haves\": [\"Backup Generator\", \"Swimming Pool\"], \"min_bedrooms\": 3, \"preferred_locations\": [\"Kilimani\", \"Kileleshwa\"]}','2026-06-18 08:31:24','2026-06-18 08:31:24'),(7,1,1,0,'Bruce Wayne','bruce@example.com','0700000000',NULL,'offer','{\"max_budget\": 45000000, \"must_haves\": [\"Backup Generator\", \"Swimming Pool\"], \"min_bedrooms\": 3, \"preferred_locations\": [\"Kilimani\", \"Kileleshwa\"]}','2026-06-18 08:32:45','2026-06-18 08:32:45'),(8,1,1,0,'Bruce Wayne','bruce@example.com','0700000000',NULL,'offer','{\"max_budget\": 45000000, \"must_haves\": [\"Backup Generator\", \"Swimming Pool\"], \"min_bedrooms\": 3, \"preferred_locations\": [\"Kilimani\", \"Kileleshwa\"]}','2026-06-18 08:33:32','2026-06-18 08:33:32'),(9,1,1,0,'Bruce Wayne','bruce@example.com','0700000000',NULL,'new','{\"max_budget\": 45000000, \"must_haves\": [\"Backup Generator\", \"Swimming Pool\"], \"min_bedrooms\": 3, \"preferred_locations\": [\"Kilimani\", \"Kileleshwa\"]}','2026-06-18 08:49:54','2026-06-18 08:49:54'),(10,3,4,7,'Sylvanus Wambua','slywamb231@gmail.com','+254790123456',14000000.00,'new','{\"notes\": \"OFFER SUBMISSION:\", \"source\": \"public_inquiry\"}','2026-06-29 12:56:50','2026-06-29 13:00:40');
+/*!40000 ALTER TABLE `leads` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `migrations`
+--
+
+DROP TABLE IF EXISTS `migrations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `migrations` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `migration` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `batch` int NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `migrations`
+--
+
+LOCK TABLES `migrations` WRITE;
+/*!40000 ALTER TABLE `migrations` DISABLE KEYS */;
+INSERT INTO `migrations` VALUES (1,'0001_01_01_000000_create_users_table',1),(2,'0001_01_01_000001_create_cache_table',1),(3,'0001_01_01_000002_create_jobs_table',1),(4,'2026_05_14_121212_create_agencies_table',1),(5,'2026_05_14_121240_add_agency_fields_to_users_table',1),(6,'2026_05_14_121310_create_properties_table',1),(7,'2026_05_14_121334_create_property_images_table',1),(8,'2026_05_14_121356_create_leads_table',1),(9,'2026_05_14_121410_create_lead_activities_table',1),(10,'2026_05_14_121445_create_transactions_table',1),(11,'2026_05_14_121540_create_activity_logs_table',1),(12,'2026_05_14_130000_create_tenants_table',1),(13,'2026_05_20_113127_create_personal_access_tokens_table',1),(14,'2026_06_03_071923_add_stripe_fields_to_users_table',1),(15,'2026_06_03_072849_create_escrows_table',1),(16,'2026_06_05_092530_create_documents_table',1),(17,'2026_06_08_084012_add_ml_columns_to_vault_documents',1),(18,'2026_06_08_112546_update_secure_documents_table',1),(19,'2026_06_08_114133_create_makao_financial_tables',1),(20,'2026_06_09_062802_create_makao_ledger_tables',1),(21,'2026_06_09_065747_create_escrow_milestones_table',1),(22,'2026_06_09_065757_create_payouts_table',1),(23,'2026_06_09_065803_create_audit_logs_table',1),(24,'2026_06_09_065807_create_platform_settings_table',1),(25,'2026_06_09_065809_add_paystack_fields_to_users_table',1),(26,'2026_06_09_085027_add_deleted_at_to_properties_table',1),(27,'2026_06_09_095046_create_subscription_tiers_table',1),(28,'2026_06_09_095051_create_subscriptions_table',1),(29,'2026_06_09_095814_add_missing_columns_to_subscription_tiers',1),(30,'2026_06_09_125511_add_phone_to_users_table',1),(31,'2026_06_10_000000_add_agency_id_to_payments_table',1),(32,'2026_06_11_093817_add_avatar_path_to_users_table',1),(33,'2026_06_11_151357_create_chat_messages_table',1),(34,'2026_06_15_105834_add_ai_verification_to_secure_documents_table',1),(35,'2026_06_15_144341_add_amenities_to_properties_table',2),(36,'2026_06_18_101035_add_lead_requirements_to_leads_table',3),(37,'2026_06_18_111036_create_notifications_table',4),(38,'2026_06_19_115244_add_roi_fields_to_properties_table',5),(39,'2026_06_19_122446_add_roi_forecast_to_properties_table',6),(40,'2026_06_29_115202_make_agency_id_nullable_on_users_table',7),(41,'2026_06_12_111424_add_index_to_chat_messages',8),(42,'2026_06_29_141544_add_property_id_to_leads_table',9),(43,'2026_07_01_124044_add_agency_id_to_chat_messages_table',9),(44,'2026_07_02_121624_add_2fa_columns_to_users_table',10);
+/*!40000 ALTER TABLE `migrations` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `notifications`
+--
+
+DROP TABLE IF EXISTS `notifications`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `notifications` (
+  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notifiable_id` bigint unsigned NOT NULL,
+  `data` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `notifications_notifiable_type_notifiable_id_index` (`notifiable_type`,`notifiable_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `notifications`
+--
+
+LOCK TABLES `notifications` WRITE;
+/*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
+/*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `password_reset_tokens`
+--
+
+DROP TABLE IF EXISTS `password_reset_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `password_reset_tokens` (
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `password_reset_tokens`
+--
+
+LOCK TABLES `password_reset_tokens` WRITE;
+/*!40000 ALTER TABLE `password_reset_tokens` DISABLE KEYS */;
+/*!40000 ALTER TABLE `password_reset_tokens` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `payments`
+--
+
+DROP TABLE IF EXISTS `payments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned NOT NULL DEFAULT '1',
+  `user_id` bigint unsigned NOT NULL,
+  `escrow_id` bigint unsigned DEFAULT NULL,
+  `amount` bigint NOT NULL,
+  `currency` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'KES',
+  `payment_method` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `transaction_reference` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `payments_transaction_reference_unique` (`transaction_reference`),
+  KEY `payments_user_id_foreign` (`user_id`),
+  KEY `payments_escrow_id_foreign` (`escrow_id`),
+  KEY `payments_agency_id_foreign` (`agency_id`),
+  CONSTRAINT `payments_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`),
+  CONSTRAINT `payments_escrow_id_foreign` FOREIGN KEY (`escrow_id`) REFERENCES `escrows` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `payments_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `payments`
+--
+
+LOCK TABLES `payments` WRITE;
+/*!40000 ALTER TABLE `payments` DISABLE KEYS */;
+/*!40000 ALTER TABLE `payments` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `payouts`
+--
+
+DROP TABLE IF EXISTS `payouts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payouts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `payouts`
+--
+
+LOCK TABLES `payouts` WRITE;
+/*!40000 ALTER TABLE `payouts` DISABLE KEYS */;
+/*!40000 ALTER TABLE `payouts` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `personal_access_tokens`
+--
+
+DROP TABLE IF EXISTS `personal_access_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `personal_access_tokens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tokenable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tokenable_id` bigint unsigned NOT NULL,
+  `name` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `abilities` text COLLATE utf8mb4_unicode_ci,
+  `last_used_at` timestamp NULL DEFAULT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `personal_access_tokens_token_unique` (`token`),
+  KEY `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`,`tokenable_id`),
+  KEY `personal_access_tokens_expires_at_index` (`expires_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `personal_access_tokens`
+--
+
+LOCK TABLES `personal_access_tokens` WRITE;
+/*!40000 ALTER TABLE `personal_access_tokens` DISABLE KEYS */;
+INSERT INTO `personal_access_tokens` VALUES (20,'App\\Models\\User',4,'makao-auth-token','d0370c3af2acf501734658ed1e3aff3f51289c3451679d5143965c065c2688a7','[\"*\"]','2026-06-29 13:12:56','2026-06-29 14:57:44','2026-06-29 12:57:44','2026-06-29 13:12:56'),(31,'App\\Models\\User',2,'makao-auth-token','ea4b8959b7ce2845b04fb588cace199ec9c950c8bcf2f5131ca81b4b78ba559e','[\"*\"]','2026-07-03 07:56:04','2026-07-03 09:54:50','2026-07-03 07:54:50','2026-07-03 07:56:04');
+/*!40000 ALTER TABLE `personal_access_tokens` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `platform_settings`
+--
+
+DROP TABLE IF EXISTS `platform_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `platform_settings` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `platform_settings`
+--
+
+LOCK TABLES `platform_settings` WRITE;
+/*!40000 ALTER TABLE `platform_settings` DISABLE KEYS */;
+/*!40000 ALTER TABLE `platform_settings` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `properties`
+--
+
+DROP TABLE IF EXISTS `properties`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `properties` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Apartment',
+  `price` decimal(15,2) NOT NULL,
+  `service_charge` decimal(10,2) DEFAULT NULL,
+  `current_rent` decimal(10,2) DEFAULT NULL,
+  `location` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `city` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bedrooms` int NOT NULL,
+  `baths` int NOT NULL,
+  `sqft` int NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `amenities` json DEFAULT NULL,
+  `status` enum('Active','Under Contract','Closed','Expired') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Active',
+  `roi_forecast` json DEFAULT NULL,
+  `contract_end_date` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `properties_agency_id_index` (`agency_id`),
+  KEY `properties_user_id_index` (`user_id`),
+  KEY `properties_location_index` (`location`),
+  KEY `properties_status_index` (`status`),
+  KEY `properties_price_index` (`price`),
+  CONSTRAINT `properties_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `properties_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `properties`
+--
+
+LOCK TABLES `properties` WRITE;
+/*!40000 ALTER TABLE `properties` DISABLE KEYS */;
+INSERT INTO `properties` VALUES (1,2,2,'The Oribi Penthouse','Apartment',85000000.00,NULL,NULL,'Muthaiga','Nairobi',4,5,4200,'An exquisite full-floor penthouse offering panoramic views of the Karura Forest. Features include floor-to-ceiling windows, a modern chef\'s kitchen with imported Italian marble, a private plunge pool, and complete smart-home automation.',NULL,'Active',NULL,'2026-12-15','2026-06-15 08:27:46','2026-06-15 12:02:40',NULL),(2,2,2,'Nyali Oceanfront Retreat','Apartment',55000000.00,NULL,NULL,'Nyali Beach','Mombasa',3,4,3100,'Luxury 3-bedroom oceanfront apartment with direct beach access. Enjoy uninterrupted Indian Ocean views from an expansive wrap-around private balcony. Includes a communal infinity pool, 24/7 security, and an automated backup generator.',NULL,'Active',NULL,'2026-10-15','2026-06-12 08:27:46','2026-06-12 08:27:46',NULL),(3,2,2,'Riat Hills Lakeside Villa','Apartment',38000000.00,NULL,NULL,'Riat Hills','Kisumu',5,5,4600,'An architectural masterpiece nestled on the exclusive Riat Hills. Offers breathtaking panoramic views of Lake Victoria and Kisumu city. Features multi-level terraces, solar water heating, and high-end mahogany finishes.',NULL,'Under Contract',NULL,'2026-07-15','2026-06-01 08:27:46','2026-06-14 08:27:46',NULL),(4,2,2,'Milimani Executive Duplex','Apartment',24500000.00,NULL,NULL,'Milimani','Nakuru',4,4,3200,'Spacious modern duplex located in Nakuru\'s premier residential zone. Double-volume lounge layout with views of Lake Nakuru National Park. Private detached staff quarters (DSQ) and secure perimeter fencing included.',NULL,'Closed',NULL,'2026-05-31','2026-05-15 08:27:46','2026-06-19 12:17:56','2026-06-19 12:17:56'),(5,2,2,'Mount Kenya Wildlife Estate Chalet','Apartment',68000000.00,NULL,NULL,'Mount Kenya Wildlife Estate','Nanyuki',4,4,4100,'Premium holiday home set inside a secure wildlife conservancy footprint. Offers unobstructed, crisp views of Mount Kenya. Game tracks wrap around the property. Ideal for high-yielding short-term vacation rentals.',NULL,'Active',NULL,'2027-06-15','2026-06-14 08:27:46','2026-06-14 08:27:46',NULL),(6,3,4,'Maisonette Plot 4B - Milimani','Apartment',4500000.00,NULL,NULL,'Milimani','Nakuru',3,2,2400,'',NULL,'Active',NULL,NULL,'2026-06-15 08:27:47','2026-06-19 12:33:36','2026-06-19 12:33:36'),(7,3,4,'Mzizi Court 1B','Apartment',15100000.00,NULL,NULL,'Two Rivers','Nairobi',3,2,5200,'Discover a lifestyle defined by sophistication and unparalleled comfort within this exquisite 3-bedroom residence, perfectly nestled in the heart of Nairobi\'s most prestigious address – Two Rivers. This premium property is meticulously designed for the discerning individual who demands nothing less than perfection, offering a sanctuary where every detail caters to an elevated living experience. Imagine waking up to serene views, with world-class shopping, dining, and entertainment just moments from your doorstep, all within a vibrant, secure community.\n\nStep inside to find a masterfully crafted interior featuring spacious living areas, three generous bedrooms, and two elegantly appointed bathrooms, ensuring ample space and privacy. Modern conveniences abound, including state-of-the-art Air Conditioning for year-round comfort, reliable Internet Provision to keep you connected, and the ease of Lifts & Staircases providing seamless access throughout the building. With Dedicated Parking, your arrival and departure are always effortless, adding to the seamless luxury of your daily life.\n\nExperience ultimate peace of mind with a comprehensive suite of security features, including 24/7 Manned Security, advanced CCTV Cameras, and a reliable Borehole ensuring an uninterrupted water supply. This pet-friendly abode welcomes your beloved companions, making it a true home for every member of your family. This isn\'t just a home; it\'s a statement of success, an investment in a lifestyle of convenience, luxury, and absolute tranquility. Seize the opportunity to claim your place in Nairobi\'s most coveted destination.','[\"CCTV Camera\", \"Reliable Water Supply (Borehole)\", \"Internet Provision\", \"Lifts & Staircase\", \"Dedicated Parking\", \"Air Conditioning\", \"Pet Friendly\", \"24/7 Manned Security\"]','Active',NULL,NULL,'2026-06-16 12:38:10','2026-06-16 13:03:39',NULL),(10,1,1,'Luxury 4BR Penthouse','Apartment',42000000.00,NULL,NULL,'Kilimani','Nairobi',4,2,4300,'A stunning penthouse with all modern amenities.','[\"Backup Generator\", \"Swimming Pool\", \"CCTV Camera\"]','Active',NULL,NULL,'2026-06-18 08:33:33','2026-06-18 08:33:33',NULL),(11,2,2,'The Lakeview Horizon Villa, Riat Hills','Apartment',65000000.00,NULL,NULL,'Riat Hills','Kisumu',5,5,4500,'An exquisite 5-bedroom luxury villa perched on the serene slopes of Riat Hills, offering breathtaking panoramic views of Lake Victoria and the Kisumu skyline. This modern architectural masterpiece features double-volume ceilings, a chef\'s semi-open plan kitchen, a private infinity pool, and a sprawling master suite with a jacuzzi. The property is secured within a premium gated community with full backup power, cabro-paved driveways, and beautifully manicured gardens. Perfect for high-net-worth individuals seeking prestige, privacy, and tranquility just minutes away from Kisumu International Airport.','[\"CCTV Camera\", \"Reliable Water Supply (Borehole)\", \"Backup Generator (Common Areas)\", \"Swimming Pool\", \"Balcony / Terrace\", \"24/7 Manned Security\", \"Panoramic Lake Victoria View\"]','Active',NULL,NULL,'2026-06-19 10:04:17','2026-06-19 10:04:17',NULL),(12,3,4,'Kiambu Road Villa','Apartment',35000000.00,NULL,NULL,'KASPHAT ESTATE, Kiambu County','Nairobi',6,5,5000,'Discover a realm of unparalleled elegance and expansive living within the prestigious KASPHAT Estate, Kiambu. This magnificent 6-bedroom maisonette is not just a home; it\'s a statement, meticulously designed for the discerning high-net-worth individual who demands space, sophistication, and serenity just moments from Nairobi\'s vibrant pulse. Imagine waking up to tranquil mornings, surrounded by lush landscapes, while still being effortlessly connected to urban conveniences. This is the ultimate sanctuary where luxury meets lifestyle.\n\nStep inside to an awe-inspiring interior where grandeur meets functionality. With six generously proportioned bedrooms and five opulent bathrooms, this residence offers an abundance of private havens for family and guests alike. Each space is crafted for comfort and style, providing an unrivaled living experience. Beyond the aesthetics, the property is equipped with state-of-the-art CCTV cameras, ensuring round-the-clock security and peace of mind, while dedicated internet provision guarantees seamless connectivity for your professional and personal needs.\n\nThe KASPHAT Estate location offers the perfect blend of suburban tranquility and urban accessibility. Enjoy the privacy and prestige of an exclusive community, with easy access to premier schools, upscale shopping, fine dining, and recreational facilities. This maisonette represents a rare opportunity to own a piece of Kiambu\'s most coveted real estate, promising a life of comfort, convenience, and unparalleled luxury. It\'s more than a residence; it\'s a legacy waiting to be embraced.\n\nSeize the opportunity to define your future. This exceptional property, priced at KES 35,000,000, is an invitation to live the extraordinary. Contact us today for a private viewing and step into the life you\'ve always envisioned.','[\"CCTV Camera\", \"Internet Provision\"]','Active',NULL,NULL,'2026-06-29 13:08:33','2026-06-29 13:08:33',NULL);
+/*!40000 ALTER TABLE `properties` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `property_images`
+--
+
+DROP TABLE IF EXISTS `property_images`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `property_images` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `property_id` bigint unsigned NOT NULL,
+  `s3_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_primary` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `property_images_property_id_foreign` (`property_id`),
+  CONSTRAINT `property_images_property_id_foreign` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `property_images`
+--
+
+LOCK TABLES `property_images` WRITE;
+/*!40000 ALTER TABLE `property_images` DISABLE KEYS */;
+INSERT INTO `property_images` VALUES (1,1,'makao/property_images/1781524831906-z34z78wv8xn.jpg',0,'2026-06-15 12:00:39','2026-06-15 12:00:39'),(2,1,'makao/property_images/1781524855148-lzmuek1fku.jpg',0,'2026-06-15 12:00:59','2026-06-15 12:00:59'),(8,7,'makao/property_images/1781614987235-94sd9yulmfd.png',0,'2026-06-16 13:03:11','2026-06-16 13:03:11'),(9,7,'makao/property_images/1781615000381-tgt8lo34rbe.png',0,'2026-06-16 13:03:21','2026-06-16 13:03:21'),(10,7,'makao/property_images/1781615006723-25ougv8y0p6.png',0,'2026-06-16 13:03:28','2026-06-16 13:03:28'),(11,7,'makao/property_images/1781615012066-xalwduu5qwd.png',0,'2026-06-16 13:03:33','2026-06-16 13:03:33'),(12,11,'properties/main/1781863446657-4dhhe9.png',1,'2026-06-19 10:04:18','2026-06-19 10:04:18'),(13,11,'properties/interior/1781863446712-dkh02f.png',0,'2026-06-19 10:04:18','2026-06-19 10:04:18'),(14,11,'properties/interior/1781863446713-4dms1b.png',0,'2026-06-19 10:04:18','2026-06-19 10:04:18'),(15,11,'properties/interior/1781863446713-q8l8h9.png',0,'2026-06-19 10:04:18','2026-06-19 10:04:18'),(16,11,'properties/interior/1781863446713-x91zsl.png',0,'2026-06-19 10:04:18','2026-06-19 10:04:18'),(17,11,'properties/exterior/1781863446713-71v9bt.png',0,'2026-06-19 10:04:18','2026-06-19 10:04:18'),(18,12,'properties/main/1782738510291-627dr.jpeg',1,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(19,12,'properties/interior/1782738510302-yeyfzj.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(20,12,'properties/interior/1782738510302-vqvskk.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(21,12,'properties/interior/1782738510302-to0fp.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(22,12,'properties/interior/1782738510302-xf7bfs.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(23,12,'properties/interior/1782738510302-8thtmq.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(24,12,'properties/interior/1782738510302-wdtnjq.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(25,12,'properties/interior/1782738510302-6ge3i8.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33'),(26,12,'properties/exterior/1782738510302-6ttvq.jpeg',0,'2026-06-29 13:08:33','2026-06-29 13:08:33');
+/*!40000 ALTER TABLE `property_images` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `refunds`
+--
+
+DROP TABLE IF EXISTS `refunds`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `refunds` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `payment_id` bigint unsigned NOT NULL,
+  `amount` bigint NOT NULL,
+  `reason` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `refunds_payment_id_foreign` (`payment_id`),
+  CONSTRAINT `refunds_payment_id_foreign` FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `refunds`
+--
+
+LOCK TABLES `refunds` WRITE;
+/*!40000 ALTER TABLE `refunds` DISABLE KEYS */;
+/*!40000 ALTER TABLE `refunds` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `secure_documents`
+--
+
+DROP TABLE IF EXISTS `secure_documents`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `secure_documents` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned NOT NULL,
+  `uploaded_by` bigint unsigned NOT NULL,
+  `user_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `type` enum('title_deed','national_id','national_id_front','national_id_back','passport','kra_pin','selfie_verification','proof_of_address','contract') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `s3_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending_review',
+  `ai_verification_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `ai_confidence_score` decimal(5,2) DEFAULT NULL,
+  `ai_reasoning` text COLLATE utf8mb4_unicode_ci,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `extracted_text` longtext COLLATE utf8mb4_unicode_ci,
+  `ml_data` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `secure_documents_agency_id_foreign` (`agency_id`),
+  KEY `secure_documents_uploaded_by_foreign` (`uploaded_by`),
+  CONSTRAINT `secure_documents_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `secure_documents_uploaded_by_foreign` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `secure_documents`
+--
+
+LOCK TABLES `secure_documents` WRITE;
+/*!40000 ALTER TABLE `secure_documents` DISABLE KEYS */;
+INSERT INTO `secure_documents` VALUES (1,2,2,NULL,'national_id_front','clients/isaiah-juma-1781516093382.pdf','verified','ai_verified',95.00,'The document is confirmed as a Kenyan National ID. The extracted name \'JUMA ISAIAH WABWIRE\' contains the expected \'Isaiah Juma\', allowing for the presence of a middle name \'WABWIRE\' not provided in the expected details. The ID number \'6870184068\' was clearly extracted.',NULL,'24106P224034\nCOUNTY:\nBUNGOMA\nŞUB-COUNTY\nBUNGOMA SOUTH\nDIVISION\nKANDUYI\nLOCATION\nTOWNSHIP:\nSUB-LOCATION\nTOWNSHIP\nDATE OF ISSUE\n15. 07, 2024\nyeiyà\nPRINCIPAL REGISTRAR\'S SIGN.\nIDKEN6870184068<393<3931<<<<<<\n0101011M3404230KEN252939232048\nJUMA<<ISAIAH<WABWIRE<<<<<<<<<<','{\"confidence\": \"low\", \"extracted_id\": null, \"has_clear_text\": true, \"extracted_kra_pin\": null, \"requires_manual_review\": true}','2026-06-15 09:35:00','2026-06-15 10:03:04'),(2,2,2,NULL,'kra_pin','clients/isaiah-juma-1781517078243.pdf','pending_review','ai_verified',98.00,'Document confirmed as KRA PIN certificate. Extracted PIN A022870043R. Extracted name \'ISAIAH WABWIRE JUMA\' matches expected name \'Isaiah Juma\', allowing for the additional middle name \'Wabwire\'.',NULL,'KENYA REVENUE\nAUTHORITY\nPIN Certificate\nwww.kra.go.ke\nor General Tax Question\nontact KRA Call Centr\nTel: +254 (020) 4999 99\nCell: +254(0711)099 99\nEmail: callcentre@kra.go.ke\nCertificate Date:\n27/10/2025\nPersonal Identification Number\nA022870043R\nThis is to certify that taxpayer shown herein has been registered with Kenya Revenue Authority\nTaxpayer Name\nEmail Address\nL.R. Number :\nStreet/Road : Kijabe Road\nCounty: Nakuru\nTax Area: Nakuru\nP. O. Box: 00\nSr. No.\n1\nTax Obligation(s)\nIncome Tax - Resident\nIndividual\nTaxpayer Information\nISAIAH WABWIRE JUMA\nISAIAHGRT2058@GMAIL.COM\nRegistered Address\nBuilding : KU Plaza\nCity/Town : Nakuru\nDistrict : Nakuru District\nStation : NAKURU\nPostal Code : 20100\nTax Obligation(s) Registration\nEffective From Date\nEffective Till Date\n27/10/2025\nN.A.\nStatus\nActive\nElectronic Tax Invoicing\neTims\nInactive\nTims Registration:\nInactive\nThe above PIN must appear on all your tax invoices and correspondences with Kenya Revenue Authority. Your\naccounting end date is 31st December as per the provisions stated in the Income Tax Act unless a change has\nbeen approved by the Commissioner-Domestic Taxes Department. The status of Tax Obligation(s) with\n\'Dormant\' status will automatically change to \'Active\' on date mentioned in \"Effective Till Date\" or any\ntransaction done during the period. This certificate shall remain in force till further updated.\nDisclaimer: This is a system generated certificate and does not require signature.','{\"confidence\": \"high\", \"extracted_id\": null, \"has_clear_text\": true, \"extracted_kra_pin\": \"A022870043R\", \"requires_manual_review\": false}','2026-06-15 09:51:21','2026-06-15 09:51:30'),(3,2,2,NULL,'national_id_back','clients/isaiah-juma-1781517851858.pdf','pending_review','ai_verified',95.00,'The document is confirmed as a Kenyan National ID back based on administrative details and MRZ format. The extracted ID number is \'24106P224034\'. The extracted name \'Isaiah Wabwire Juma\' matches the expected name \'Isaiah Juma\', allowing for the presence of a middle name.',NULL,'24106P224034\nCOUNTY:\nBUNGOMA\nŞUB-COUNTY\nBUNGOMA SOUTH\nDIVISION\nKANDUYI\nLOCATION\nTOWNSHIP:\nSUB-LOCATION\nTOWNSHIP\nDATE OF ISSUE\n15. 07, 2024\nyeiyà\nPRINCIPAL REGISTRAR\'S SIGN.\nIDKEN6870184068<393<3931<<<<<<\n0101011M3404230KEN252939232048\nJUMA<<ISAIAH<WABWIRE<<<<<<<<<<','{\"confidence\": \"low\", \"extracted_id\": null, \"has_clear_text\": true, \"extracted_kra_pin\": null, \"requires_manual_review\": true}','2026-06-15 10:04:16','2026-06-15 10:04:33'),(4,2,2,NULL,'kra_pin','clients/isaiah-juma-1781784485712.pdf','pending_review','ai_verified',98.00,'Document confirmed as KRA PIN Certificate. PIN A022870043R extracted. Taxpayer name \'ISAIAH WABWIRE JUMA\' extracted, which matches the expected name \'Isaiah Juma\' allowing for the additional middle name \'WABWIRE\'.',NULL,'KENYA REVENUE\nAUTHORITY\nPIN Certificate\nwww.kra.go.ke\nor General Tax Question\nontact KRA Call Centr\nTel: +254 (020) 4999 99\nCell: +254(0711)099 99\nEmail: callcentre@kra.go.ke\nCertificate Date:\n27/10/2025\nPersonal Identification Number\nA022870043R\nThis is to certify that taxpayer shown herein has been registered with Kenya Revenue Authority\nTaxpayer Name\nEmail Address\nL.R. Number :\nStreet/Road : Kijabe Road\nCounty: Nakuru\nTax Area: Nakuru\nP. O. Box: 00\nSr. No.\n1\nTax Obligation(s)\nIncome Tax - Resident\nIndividual\nTaxpayer Information\nISAIAH WABWIRE JUMA\nISAIAHGRT2058@GMAIL.COM\nRegistered Address\nBuilding : KU Plaza\nCity/Town : Nakuru\nDistrict : Nakuru District\nStation : NAKURU\nPostal Code : 20100\nTax Obligation(s) Registration\nEffective From Date\nEffective Till Date\n27/10/2025\nN.A.\nStatus\nActive\nElectronic Tax Invoicing\neTims\nInactive\nTims Registration:\nInactive\nThe above PIN must appear on all your tax invoices and correspondences with Kenya Revenue Authority. Your\naccounting end date is 31st December as per the provisions stated in the Income Tax Act unless a change has\nbeen approved by the Commissioner-Domestic Taxes Department. The status of Tax Obligation(s) with\n\'Dormant\' status will automatically change to \'Active\' on date mentioned in \"Effective Till Date\" or any\ntransaction done during the period. This certificate shall remain in force till further updated.\nDisclaimer: This is a system generated certificate and does not require signature.','{\"confidence\": \"high\", \"extracted_id\": null, \"has_clear_text\": true, \"extracted_kra_pin\": \"A022870043R\", \"requires_manual_review\": false}','2026-06-18 12:08:12','2026-06-18 12:08:27'),(5,2,2,NULL,'kra_pin','clients/cessina--muchoki-1781784667878.pdf','rejected','ai_flagged',40.00,'The document is confirmed as a KRA PIN certificate and the PIN A022870043R was clearly extracted. However, the extracted name \'ISAIAH WABWIRE JUMA\' does not match the expected name \'Cessina Muchoki\'. This is a major discrepancy.',NULL,'KENYA REVENUE\nAUTHORITY\nPIN Certificate\nwww.kra.go.ke\nor General Tax Question\nontact KRA Call Centr\nTel: +254 (020) 4999 99\nCell: +254(0711)099 99\nEmail: callcentre@kra.go.ke\nCertificate Date:\n27/10/2025\nPersonal Identification Number\nA022870043R\nThis is to certify that taxpayer shown herein has been registered with Kenya Revenue Authority\nTaxpayer Name\nEmail Address\nL.R. Number :\nStreet/Road : Kijabe Road\nCounty: Nakuru\nTax Area: Nakuru\nP. O. Box: 00\nSr. No.\n1\nTax Obligation(s)\nIncome Tax - Resident\nIndividual\nTaxpayer Information\nISAIAH WABWIRE JUMA\nISAIAHGRT2058@GMAIL.COM\nRegistered Address\nBuilding : KU Plaza\nCity/Town : Nakuru\nDistrict : Nakuru District\nStation : NAKURU\nPostal Code : 20100\nTax Obligation(s) Registration\nEffective From Date\nEffective Till Date\n27/10/2025\nN.A.\nStatus\nActive\nElectronic Tax Invoicing\neTims\nInactive\nTims Registration:\nInactive\nThe above PIN must appear on all your tax invoices and correspondences with Kenya Revenue Authority. Your\naccounting end date is 31st December as per the provisions stated in the Income Tax Act unless a change has\nbeen approved by the Commissioner-Domestic Taxes Department. The status of Tax Obligation(s) with\n\'Dormant\' status will automatically change to \'Active\' on date mentioned in \"Effective Till Date\" or any\ntransaction done during the period. This certificate shall remain in force till further updated.\nDisclaimer: This is a system generated certificate and does not require signature.','{\"confidence\": \"high\", \"extracted_id\": null, \"has_clear_text\": true, \"extracted_kra_pin\": \"A022870043R\", \"requires_manual_review\": false}','2026-06-18 12:11:12','2026-06-18 12:39:39'),(6,3,4,NULL,'national_id_front','clients/isaiah-juma-1782738712293.pdf','pending_review','ai_verified',95.00,'The document is confirmed as a Kenyan National ID. The ID number \'6870184068\' was extracted. The extracted name \'Isaiah Wabwire Juma\' matches the expected name \'Isaiah Juma\', allowing for the additional middle name \'Wabwire\'.',NULL,'24106P224034\nCOUNTY:\nBUNGOMA\nŞUB-COUNTY\nBUNGOMA SOUTH\nDIVISION\nKANDUYI\nLOCATION\nTOWNSHIP:\nSUB-LOCATION\nTOWNSHIP\nDATE OF ISSUE\n15. 07, 2024\nyeiyà\nPRINCIPAL REGISTRAR\'S SIGN.\nIDKEN6870184068<393<3931<<<<<<\n0101011M3404230KEN252939232048\nJUMA<<ISAIAH<WABWIRE<<<<<<<<<<','{\"confidence\": \"low\", \"extracted_id\": null, \"has_clear_text\": true, \"extracted_kra_pin\": null, \"requires_manual_review\": true}','2026-06-29 13:11:55','2026-06-29 13:12:08');
+/*!40000 ALTER TABLE `secure_documents` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `sessions`
+--
+
+DROP TABLE IF EXISTS `sessions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sessions` (
+  `id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text COLLATE utf8mb4_unicode_ci,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `last_activity` int NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `sessions_user_id_index` (`user_id`),
+  KEY `sessions_last_activity_index` (`last_activity`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `sessions`
+--
+
+LOCK TABLES `sessions` WRITE;
+/*!40000 ALTER TABLE `sessions` DISABLE KEYS */;
+/*!40000 ALTER TABLE `sessions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `subscription_tiers`
+--
+
+DROP TABLE IF EXISTS `subscription_tiers`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `subscription_tiers` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `monthly_price` decimal(10,2) NOT NULL,
+  `yearly_price` decimal(10,2) DEFAULT NULL,
+  `features` json NOT NULL,
+  `max_properties` int NOT NULL DEFAULT '5',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `subscription_tiers_slug_unique` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `subscription_tiers`
+--
+
+LOCK TABLES `subscription_tiers` WRITE;
+/*!40000 ALTER TABLE `subscription_tiers` DISABLE KEYS */;
+/*!40000 ALTER TABLE `subscription_tiers` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `subscriptions`
+--
+
+DROP TABLE IF EXISTS `subscriptions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `subscriptions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `subscribable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subscribable_id` bigint unsigned NOT NULL,
+  `tier_id` bigint unsigned NOT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `starts_at` timestamp NULL DEFAULT NULL,
+  `ends_at` timestamp NULL DEFAULT NULL,
+  `canceled_at` timestamp NULL DEFAULT NULL,
+  `payment_provider` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'paystack',
+  `provider_subscription_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `subscriptions_tier_id_foreign` (`tier_id`),
+  KEY `subscriptions_subscribable_type_subscribable_id_index` (`subscribable_type`,`subscribable_id`),
+  CONSTRAINT `subscriptions_tier_id_foreign` FOREIGN KEY (`tier_id`) REFERENCES `subscription_tiers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `subscriptions`
+--
+
+LOCK TABLES `subscriptions` WRITE;
+/*!40000 ALTER TABLE `subscriptions` DISABLE KEYS */;
+/*!40000 ALTER TABLE `subscriptions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `tenants`
+--
+
+DROP TABLE IF EXISTS `tenants`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tenants` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `tenants_email_unique` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `tenants`
+--
+
+LOCK TABLES `tenants` WRITE;
+/*!40000 ALTER TABLE `tenants` DISABLE KEYS */;
+/*!40000 ALTER TABLE `tenants` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `transaction_logs`
+--
+
+DROP TABLE IF EXISTS `transaction_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `transaction_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `payment_id` bigint unsigned DEFAULT NULL,
+  `event` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` json NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `transaction_logs_payment_id_foreign` (`payment_id`),
+  CONSTRAINT `transaction_logs_payment_id_foreign` FOREIGN KEY (`payment_id`) REFERENCES `payments` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `transaction_logs`
+--
+
+LOCK TABLES `transaction_logs` WRITE;
+/*!40000 ALTER TABLE `transaction_logs` DISABLE KEYS */;
+/*!40000 ALTER TABLE `transaction_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `transactions`
+--
+
+DROP TABLE IF EXISTS `transactions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `transactions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned NOT NULL,
+  `property_id` bigint unsigned NOT NULL,
+  `lead_id` bigint unsigned NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `status` enum('pending','held_in_escrow','released') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `gateway_signature` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `transactions_property_id_foreign` (`property_id`),
+  KEY `transactions_lead_id_foreign` (`lead_id`),
+  KEY `transactions_agency_id_index` (`agency_id`),
+  KEY `transactions_status_index` (`status`),
+  CONSTRAINT `transactions_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `transactions_lead_id_foreign` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `transactions_property_id_foreign` FOREIGN KEY (`property_id`) REFERENCES `properties` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `transactions`
+--
+
+LOCK TABLES `transactions` WRITE;
+/*!40000 ALTER TABLE `transactions` DISABLE KEYS */;
+/*!40000 ALTER TABLE `transactions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `users`
+--
+
+DROP TABLE IF EXISTS `users`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `users` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `agency_id` bigint unsigned DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `avatar_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email_verified_at` timestamp NULL DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `role` enum('admin','agent','client') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'client',
+  `stripe_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pm_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pm_last_four` varchar(4) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `trial_ends_at` timestamp NULL DEFAULT NULL,
+  `two_factor_enabled` tinyint(1) NOT NULL DEFAULT '0',
+  `two_factor_code` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `two_factor_expires_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `users_email_unique` (`email`),
+  UNIQUE KEY `users_stripe_id_unique` (`stripe_id`),
+  KEY `users_agency_id_foreign` (`agency_id`),
+  CONSTRAINT `users_agency_id_foreign` FOREIGN KEY (`agency_id`) REFERENCES `agencies` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `users`
+--
+
+LOCK TABLES `users` WRITE;
+/*!40000 ALTER TABLE `users` DISABLE KEYS */;
+INSERT INTO `users` VALUES (1,1,'Hillary Sioliula','hillary@makao.co.ke','avatars/xKZzvCIR3q4Dcxx3yUiCmEJImAGmPYdiMqEcJ9FY.jpg',NULL,NULL,'$2y$12$0bff6DH0ixl1DqZGLwt2HODQYcI0qIPXCzEBbNxHeHr2V.YK7.PdC',NULL,'2026-06-15 08:27:45','2026-06-18 09:41:21','admin',NULL,NULL,NULL,NULL,0,NULL,NULL),(2,2,'Jane Doe','jane.doe@gmail.com','avatars/qJHWxIYymg6u5lnGK0awctnA7Qj3lke466Al5KFZ.jpg',NULL,NULL,'$2y$12$KO02iGT55bIydcc2plGM.u4nri3/exkdVOfm.g1mTzsMEbOsqqqS6',NULL,'2026-06-15 08:27:45','2026-07-03 07:54:50','agent',NULL,NULL,NULL,NULL,1,NULL,NULL),(3,2,'John Smith','john.smith@gmail.com',NULL,NULL,NULL,'$2y$12$d7FaHOe4LDyZdjMyavpfYuily98fB8JTI/dhok8tWrXY51Y7HMTzq',NULL,'2026-06-15 08:27:46','2026-06-15 08:27:46','client',NULL,NULL,NULL,NULL,0,NULL,NULL),(4,3,'Mufasa Gremlin','mufasagremlin@qwetuproperties.co.ke','avatars/qVwoTeqKJMIbvDfd2vM7Ve1sniVnMG6PL23hhTEj.jpg','+254700000000',NULL,'$2y$12$GjlBeRnstvuAHB0Pn.AVU.sS70A7H2XgbTUpibVxPEZqWq1tFS.D.',NULL,'2026-06-15 08:27:47','2026-06-29 13:10:25','agent',NULL,NULL,NULL,NULL,0,NULL,NULL),(5,3,'Victor Keitany','buyer@workspace.ke',NULL,'+254711223344',NULL,'$2y$12$uAGVtBAArOFDKyKvpJ3tO.X9iSemITcWpqr576/EK50Qb9v2YJFlG',NULL,'2026-06-15 08:27:47','2026-06-15 08:27:47','client',NULL,NULL,NULL,NULL,0,NULL,NULL),(6,3,'Kiprop Demo Seller','seller@makao.co.ke',NULL,'+254722334455',NULL,'$2y$12$CXiurXf8eJ679unDWljOUOf2Z9nk05h448ngcKNKbXWStDPdaoVC2',NULL,'2026-06-15 08:27:47','2026-06-15 08:27:47','client',NULL,NULL,NULL,NULL,0,NULL,NULL),(7,2,'Isaiah Juma','isaiah@gmail.com',NULL,NULL,NULL,'$2y$12$hvU0Dfa2//NM9p0zXHpPbuW4PeY1i1fRioZ95kOKIYgdhsMJFkZFq',NULL,'2026-06-15 09:34:56','2026-06-15 09:34:56','client',NULL,NULL,NULL,NULL,0,NULL,NULL),(8,2,'Isaiah Juma','isaiahgrt2058@gmail.com',NULL,NULL,NULL,'$2y$12$vuEGZiV1qL3Mr0nfR.pfqe98C5ND38Cx4jsGGLrUJ7BTtCKcuWxre',NULL,'2026-06-15 09:51:20','2026-06-15 09:51:20','client',NULL,NULL,NULL,NULL,0,NULL,NULL),(9,2,'Cessina  Muchoki','cessina254@gmail.com',NULL,NULL,NULL,'$2y$12$154tXr9Xv3THaztpcq6dDeQejYy/lgosDhtN.dGIR.NFmSWlfcK3m',NULL,'2026-06-18 12:11:10','2026-06-18 12:11:10','client',NULL,NULL,NULL,NULL,0,NULL,NULL),(10,3,'Claudia Amani','claudia234@gmail.com',NULL,NULL,NULL,'$2y$12$2Hg1PEaO7oIYnA0pYKIzaObjntw56XHfpPMXk.fR3nu7gm8j84z0a',NULL,'2026-06-26 07:25:37','2026-06-26 07:25:37','agent',NULL,NULL,NULL,NULL,0,NULL,NULL),(12,3,'Isaiah Juma','isaiahgrt@gmail.com',NULL,NULL,NULL,'$2y$12$R8imB92f7qoKAyGZjXPoOOC/7Nq3aq5vGTFUW.CkeFl4SKsMNeqo6',NULL,'2026-06-29 13:11:55','2026-06-29 13:11:55','client',NULL,NULL,NULL,NULL,0,NULL,NULL);
+/*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2026-07-03 10:59:24
