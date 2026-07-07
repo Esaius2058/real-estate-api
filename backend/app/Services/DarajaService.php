@@ -59,8 +59,21 @@ class DarajaService
         // Clean the phone number to Safaricom's strict format
         $formattedPhone = $this->formatPhoneNumber($phoneNumber);
 
-        // 🔥 ROUTING FIX: Tailored specifically to your app's Api/v1 structure 
-        $callbackUrl = rtrim(env('MPESA_CALLBACK_URL'), '/') . '/api/v1/payments/callback'; 
+        $baseCallbackUrl = env('MPESA_CALLBACK_URL');
+        if (!$baseCallbackUrl || str_contains($baseCallbackUrl, 'localhost') || str_contains($baseCallbackUrl, '127.0.0.1') || !str_starts_with($baseCallbackUrl, 'https://')) {
+            // Safaricom requires an absolute, publicly reachable HTTPS URL
+            // here. In local dev without an ngrok-style tunnel there is no
+            // such URL — the STK push will still fire and the user can still
+            // enter their PIN, but the callback will never land. Callers
+            // should poll PaymentController::checkStatus(), which actively
+            // queries Safaricom instead of waiting on this callback.
+            // Safaricom validation rejects 'localhost', IP addresses, or non-HTTPS callback URLs.
+            // We use a dummy public HTTPS URL to bypass validation.
+            Log::warning('No valid public HTTPS MPESA_CALLBACK_URL set. Falling back to dummy HTTPS URL for Safaricom schema validation.');
+            $callbackUrl = 'https://example.com/api/v1/payments/callback';
+        } else {
+            $callbackUrl = rtrim($baseCallbackUrl, '/') . '/api/v1/payments/callback';
+        }
 
         $payload = [
             'BusinessShortCode' => $this->shortcode,
@@ -89,6 +102,36 @@ class DarajaService
             $safaricomError = $errorData['errorMessage'] ?? $errorData['CustomerMessage'] ?? 'Unknown Safaricom Error';
             
             throw new \Exception("Daraja Error: " . $safaricomError);
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Actively query Safaricom for the result of an STK push, instead of
+     * only waiting for the callback. The callback requires MPESA_CALLBACK_URL
+     * to be a publicly reachable HTTPS URL (e.g. via ngrok) — in local dev
+     * without a tunnel, Safaricom can never reach your callback route, so
+     * the payment would sit at 'pending' forever with no way to resolve it.
+     * This lets the frontend poll for the real result instead.
+     */
+    public function queryStkStatus(string $checkoutRequestId): array
+    {
+        $token = $this->authenticate();
+        $timestamp = now()->format('YmdHis');
+        $password = base64_encode($this->shortcode . $this->passkey . $timestamp);
+
+        $response = Http::withToken($token)
+            ->post("{$this->baseUrl}/mpesa/stkpushquery/v1/query", [
+                'BusinessShortCode' => $this->shortcode,
+                'Password'          => $password,
+                'Timestamp'         => $timestamp,
+                'CheckoutRequestID' => $checkoutRequestId,
+            ]);
+
+        if ($response->failed()) {
+            Log::error('Daraja STK query failed', ['response' => $response->json()]);
+            return ['ResultCode' => null];
         }
 
         return $response->json();

@@ -56,13 +56,25 @@ class PropertyController extends Controller
     public function store(StorePropertyRequest $request): JsonResponse
     {
         $user = auth()->user();
+        
+        // 1. Double-submit protection
         $lock = Cache::lock('submit_property_user_' . $user->id, 5);
-
         if (!$lock->get()) {
             return response()->json(['message' => 'Please wait a moment before submitting again.'], 429);
         }
 
         try {
+            // 2. Strict Subscription Enforcement
+            $currentCount = Property::where('agency_id', $user->agency_id)->count();
+            $limit = $user->propertyLimit();
+
+            if ($currentCount >= $limit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Your agency has reached its plan limit of {$limit} listings. Upgrade your subscription to add more.",
+                ], 403);
+            }
+
             $validated = $request->validated();
 
             if (isset($validated['features'])) {
@@ -76,7 +88,7 @@ class PropertyController extends Controller
             $validated['agency_id'] = $user->agency_id;
             $validated['user_id'] = $user->id; 
 
-            // Execute DB transaction to ensure atomic property and image creation
+            // 3. Atomic Database Execution
             $property = DB::transaction(function () use ($validated, $imagesPayload) {
                 
                 $property = Property::create($validated);
@@ -134,29 +146,26 @@ class PropertyController extends Controller
     {
         $cacheKey = "property_show_{$id}";
 
-        // 1. Developer/Admin Cache Bypass
-        // Allows staff to see immediate updates without waiting 24 hours
+        // Developer/Admin Cache Bypass
         if ($request->has('fresh') && $request->user()?->can('manage-system')) {
             Cache::forget($cacheKey);
         }
 
         $propertyData = Cache::remember($cacheKey, now()->addHours(24), function () use ($id) {
             $property = Property::with(['images', 'agent', 'agency'])
-                ->whereIn('status', ['active', 'active_listing']) // STRICT SCOPE: Block unlisted assets
+                ->whereIn('status', ['active', 'active_listing']) // STRICT SCOPE
                 ->findOrFail($id);
             
             return (new PropertyResource($property))->response()->getData(true);
         });
 
-        // 2. Tactical Efficiency: Asynchronous View Tracking
-        // Fires after the JSON is sent to the user. Zero impact on load time.
+        // Asynchronous View Tracking (Zero Frontend Block)
         if (!$request->user()?->can('manage-system')) {
             ProcessPropertyView::dispatchAfterResponse($id, $request->ip(), $request->user()?->id);
         }
 
         return response()->json($propertyData);
     }
-    
 
     public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
     {
@@ -190,9 +199,8 @@ class PropertyController extends Controller
             'images.exterior' => 'nullable|array',
         ]);
 
-        // Inside the DB::transaction block:
         $property = Property::create([
-            'agency_id'   => $request->route('agencyId') ?? $request->input('agency_id', 1), // Fallback or route param
+            'agency_id'   => $request->route('agencyId') ?? $request->input('agency_id', 1),
             'title'       => $validated['title'],
             'price'       => $validated['price'],
             'location'    => $validated['location'],
@@ -206,24 +214,23 @@ class PropertyController extends Controller
             'status'      => $validated['status'],
         ]);
 
-        // Store Main Image
         if (!empty($validated['images']['main'])) {
-            $property->images()->create(['path' => $validated['images']['main'], 'type' => 'main']);
+            $property->images()->create(['s3_path' => $validated['images']['main'], 'is_primary' => 1]);
         }
 
-        // Store Interior Images
         if (!empty($validated['images']['interior'])) {
             foreach ($validated['images']['interior'] as $path) {
-                $property->images()->create(['path' => $path, 'type' => 'interior']);
+                $property->images()->create(['s3_path' => $path, 'is_primary' => 0]);
             }
         }
 
-        // Store Exterior Images
         if (!empty($validated['images']['exterior'])) {
             foreach ($validated['images']['exterior'] as $path) {
-                $property->images()->create(['path' => $path, 'type' => 'exterior']);
+                $property->images()->create(['s3_path' => $path, 'is_primary' => 0]);
             }
         }
+
+        return response()->json(['message' => 'Scraped property ingested successfully', 'data' => $property], 201);
     }
 
     public function generatePublicSignedUrls(Request $request): JsonResponse
@@ -233,9 +240,7 @@ class PropertyController extends Controller
         ]);
 
         try {
-            $url = \Illuminate\Support\Facades\Storage::disk('s3')
-                ->temporaryUrl($request->path, now()->addMinutes(60));
-
+            $url = Storage::disk('s3')->temporaryUrl($request->path, now()->addMinutes(60));
             return response()->json(['signed_url' => $url]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to generate signed URL'], 500);
@@ -252,7 +257,6 @@ class PropertyController extends Controller
             ? Str::after($request->url, '/public/bucket/') 
             : $request->url;
 
-        // FIX: Set is_primary if it's the first image, or based on your UI logic
         $isPrimary = $property->images()->count() === 0 ? 1 : 0;
 
         $image = $property->images()->create([
@@ -314,7 +318,7 @@ class PropertyController extends Controller
         $price = $request->query('price');
         $excludeId = $request->query('exclude_id');
 
-        $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
+        $comps = Property::where('location', 'like', "%{$location}%")
             ->where('type', $type)
             ->when($excludeId, function($query, $excludeId) {
                 return $query->where('id', '!=', $excludeId);
@@ -339,7 +343,7 @@ class PropertyController extends Controller
                 'force_refresh' => 'boolean',
             ]);
 
-            $property = \App\Models\Property::find($validated['property_id']);
+            $property = Property::find($validated['property_id']);
             $forceRefresh = $request->boolean('force_refresh', false);
 
             if (!$forceRefresh && !empty($property->roi_forecast)) {
@@ -350,7 +354,7 @@ class PropertyController extends Controller
             $type = $validated['property_type'];
             $price = $validated['price'];
 
-            $comps = \App\Models\Property::where('location', 'like', "%{$location}%")
+            $comps = Property::where('location', 'like', "%{$location}%")
                 ->where('type', $type)
                 ->where('id', '!=', $property->id)
                 ->whereBetween('price', [$price * 0.75, $price * 1.25])
@@ -374,6 +378,9 @@ class PropertyController extends Controller
 
             $forecastData = $response->json();
 
+            // Stamp generation time so frontend can show "loaded from cache" vs fresh
+            $forecastData['generated_at'] = now()->toISOString();
+            
             $property->update(['roi_forecast' => $forecastData]);
 
             return response()->json($forecastData);
@@ -384,37 +391,29 @@ class PropertyController extends Controller
         }
     }
 
-    public function destroy(\App\Models\Property $property)
+    public function destroy(Property $property)
     {
-        if (auth()->user()->role === 'agent' && $property->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized. Agents can only delete their own properties.'], 403);
-        }
+        // Enforce Secure Policy (Overrides Victor's hardcoded check)
+        $this->authorize('delete', $property);
 
         try {
-            $images = $property->images ?? [];
-            $pathsToDelete = [];
+            // Securely wipe remote storage using properly typed Eloquent relationships
+            $images = $property->images; 
             
-            if (!empty($images['main'])) {
-                $pathsToDelete[] = $images['main'];
-            }
-            if (!empty($images['interior']) && is_array($images['interior'])) {
-                $pathsToDelete = array_merge($pathsToDelete, $images['interior']);
-            }
-            if (!empty($images['exterior']) && is_array($images['exterior'])) {
-                $pathsToDelete = array_merge($pathsToDelete, $images['exterior']);
-            }
-
-            if (!empty($pathsToDelete)) {
-                foreach ($pathsToDelete as $path) {
+            foreach ($images as $image) {
+                if (!empty($image->s3_path)) {
                     try {
-                        Storage::disk('s3')->delete($path);
+                        Storage::disk('s3')->delete($image->s3_path);
                     } catch (\Exception $e) {
-                        Log::warning("Failed to delete Supabase image during property deletion: " . $path);
+                        Log::warning("Failed to delete S3 image during property deletion: " . $image->s3_path);
                     }
                 }
             }
 
             $propertyId = $property->id;
+            
+            // Delete DB records
+            $property->images()->delete(); 
             $property->delete();
 
             Cache::forget("property_show_{$propertyId}");

@@ -4,26 +4,59 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Subscription extends Model
 {
     protected $fillable = [
-        'user_id', 
-        'subscription_tier_id', 
-        'status', 
-        'gateway_reference', 
-        'ends_at'
+        'subscribable_type',
+        'subscribable_id',
+        'tier_id',
+        'billing_cycle',
+        'status',
+        'starts_at',
+        'ends_at',
+        'canceled_at',
+        'payment_provider',
+        'provider_subscription_id',
     ];
 
     protected $casts = [
-        'ends_at' => 'datetime'
+        'starts_at' => 'datetime',
+        'ends_at' => 'datetime',
+        'canceled_at' => 'datetime',
     ];
 
-    /**
-     * Get the tier plan details associated with this user subscription.
-     */
     public function tier(): BelongsTo
     {
-        return $this->belongsTo(SubscriptionTier::class, 'subscription_tier_id');
+        return $this->belongsTo(SubscriptionTier::class, 'tier_id');
+    }
+
+    public function subscribable(): MorphTo
+    {
+        return $this->morphTo();
+    }
+
+    public static function activateFromPaymentId(?int $subscriptionId): void
+    {
+        if (!$subscriptionId) {
+            return;
+        }
+
+        $subscription = static::find($subscriptionId);
+
+        if (!$subscription || $subscription->status === 'active') {
+            return;
+        }
+
+        $startsAt = $subscription->starts_at ?? now();
+
+        $subscription->update([
+            'status' => 'active',
+            'starts_at' => $startsAt,
+            'ends_at' => $subscription->billing_cycle === 'yearly'
+                ? $startsAt->copy()->addYear()
+                : $startsAt->copy()->addMonth(),
+        ]);
     }
 }

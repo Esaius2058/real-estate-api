@@ -14,22 +14,23 @@ class Payment extends Model
         'agency_id',
         'user_id',
         'property_id',
-        'escrow_id',           // ✅ ADD THIS
+        'escrow_id',
+        'subscription_id',
         'amount',
         'merchant_request_id',
         'checkout_request_id',
         'receipt_number',
         'status',
-        'payment_type', 
+        'payment_type',
         'payment_method',
         'transaction_reference',
-        'paid_at',  
-        'currency',           // ✅ ADD THIS
+        'paid_at',
+        'currency',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
-        'paid_at' => 'datetime',  // ✅ ADD THIS
+        'paid_at' => 'datetime',
     ];
 
     public function agency(): BelongsTo
@@ -47,13 +48,16 @@ class Payment extends Model
         return $this->belongsTo(Property::class);
     }
 
-    // ✅ ADD THIS RELATIONSHIP
     public function escrow(): BelongsTo
     {
         return $this->belongsTo(Escrow::class);
     }
 
-    // ✅ ADD HELPER METHODS
+    public function subscription(): BelongsTo
+    {
+        return $this->belongsTo(Subscription::class);
+    }
+
     public function isCompleted(): bool
     {
         return $this->status === 'completed';

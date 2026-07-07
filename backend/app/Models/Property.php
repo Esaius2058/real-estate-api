@@ -35,7 +35,8 @@ class Property extends Model
         'description',
         'amenities',
         'status',
-        'contract_end_date'
+        'contract_end_date',
+        'roi_forecast',
     ];
 
     protected static function booted(): void
@@ -51,6 +52,8 @@ class Property extends Model
 
     protected $casts = [
         'amenities' => 'array',
+        'roi_forecast' => 'array',  
+        'deleted_at'   => 'datetime',
     ];
     
     public function agent()

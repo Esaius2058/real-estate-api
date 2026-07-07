@@ -124,6 +124,37 @@ class EscrowController extends Controller
         ]);
     }
 
+    public function myEscrows(Request $request)
+    {
+        $user = Auth::user();
+        $limit = (int) $request->query('limit', 20);
+
+        $escrows = Escrow::with(['property', 'buyer', 'seller'])
+            ->where(function ($q) use ($user) {
+                $q->where('buyer_id', $user->id)
+                  ->orWhere('seller_id', $user->id);
+            })
+            ->latest()
+            ->limit($limit)
+            ->get()->map(function ($escrow) {
+                return [
+                    'id'              => $escrow->id,
+                    'propertyTitle'   => $escrow->property?->title ?? 'Unknown Property',
+                    'amount'          => $escrow->amount,
+                    'total_paid'      => $escrow->total_paid,
+                    'remaining'       => $escrow->remaining,
+                    'status'          => $escrow->status,
+                    'terms'           => $escrow->terms,
+                    'buyer_id'        => $escrow->buyer_id,
+                    'seller_id'       => $escrow->seller_id,
+                    'is_fully_funded' => $escrow->is_fully_funded,
+                    'updated_at'      => $escrow->updated_at,
+                ];
+            });
+
+        return response()->json($escrows);
+    }
+
     /**
      * Buyer releases funds to seller after conditions are met
      * POST /api/v1/escrows/{id}/release

@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             PropertySeeder::class,
             LeadSeeder::class,
             EscrowSeeder::class,
+            SubscriptionTierSeeder::class,
         ]);
     }
 }

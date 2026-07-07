@@ -1,7 +1,11 @@
+<?php
+
 namespace App\Providers;
 
 use App\Models\Property;
 use App\Policies\PropertyPolicy;
+use App\Models\User; // Make sure to import the User model
+use Illuminate\Support\Facades\Gate; // Import the Gate facade
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -21,5 +25,10 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+
+        // Define the missing gate used by your admin routes middleware
+        Gate::define('manage-system', function (User $user) {
+            return $user->role === 'admin';
+        });
     }
 }

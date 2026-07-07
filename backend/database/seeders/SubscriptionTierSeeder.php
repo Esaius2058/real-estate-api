@@ -1,32 +1,61 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+namespace Database\Seeders;
 
-return new class extends Migration
+use App\Models\SubscriptionTier;
+use Illuminate\Database\Seeder;
+
+class SubscriptionTierSeeder extends Seeder
 {
-    public function up()
+    public function run(): void
     {
-        Schema::table('subscription_tiers', function (Blueprint $table) {
-            if (!Schema::hasColumn('subscription_tiers', 'monthly_price')) {
-                $table->decimal('monthly_price', 10, 2)->after('slug');
-            }
-            if (!Schema::hasColumn('subscription_tiers', 'yearly_price')) {
-                $table->decimal('yearly_price', 10, 2)->nullable()->after('monthly_price');
-            }
-            if (!Schema::hasColumn('subscription_tiers', 'max_properties')) {
-                $table->integer('max_properties')->default(5)->after('features');
-            }
-            if (!Schema::hasColumn('subscription_tiers', 'is_active')) {
-                $table->boolean('is_active')->default(true)->after('max_properties');
-            }
-        });
+        $tiers = [
+            [
+                'slug' => 'starter',
+                'name' => 'Agent Starter',
+                'monthly_price' => 1500,
+                'yearly_price' => 15300,
+                'max_properties' => 10,
+                'is_active' => true,
+                'features' => [
+                    'Up to 10 active listings',
+                    'Basic lead management',
+                    'Escrow tracking',
+                ],
+            ],
+            [
+                'slug' => 'growth',
+                'name' => 'Agency Growth',
+                'monthly_price' => 3500,
+                'yearly_price' => 35700,
+                'max_properties' => 50,
+                'is_active' => true,
+                'features' => [
+                    'Up to 50 active listings',
+                    'Full lead management',
+                    'Escrow tracking',
+                    'KYC vault access',
+                ],
+            ],
+            [
+                'slug' => 'enterprise',
+                'name' => 'Agency Enterprise',
+                'monthly_price' => 7500,
+                'yearly_price' => 76500,
+                'max_properties' => 999999,
+                'is_active' => true,
+                'features' => [
+                    'Unlimited active listings',
+                    'Full lead management',
+                    'Escrow tracking',
+                    'KYC vault access',
+                    'Priority support',
+                ],
+            ],
+        ];
+
+        foreach ($tiers as $tier) {
+            SubscriptionTier::updateOrCreate(['slug' => $tier['slug']], $tier);
+        }
     }
-    public function down()
-    {
-        Schema::table('subscription_tiers', function (Blueprint $table) {
-            $table->dropColumn(['monthly_price', 'yearly_price', 'max_properties', 'is_active']);
-        });
-    }
-};
+}
